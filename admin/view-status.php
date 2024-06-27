@@ -1,27 +1,24 @@
 <?php
-define( 'WEB_PAGE_TO_ROOT', '' );
+define( 'WEB_PAGE_TO_ROOT', '../' );
 require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
+
+PageStartup( array( 'authenticated' ) );
     
 DatabaseConnect();
+if (checkPermissions($_SESSION['user_id'], 1) == "false") {
+    header("HTTP/1.0 403 Forbidden");
+    require_once WEB_PAGE_TO_ROOT . '404.php';
+    exit();
+}
 
     $errors = array('number' => '', 'date' => '', 'final' => '');
     $number = $date = '';
     $avail_ac = $avail_sleeper = '';
     if(isset($_POST['submit'])){
         $number = $_POST['number'];
-        $number = trim( $number );
-        $number = stripslashes( $number );
-        $number = htmlspecialchars( $number );
-        $number = $GLOBALS["___conn"]->real_escape_string($number);
-        (preg_match('/^\d{0,19}$/', $number))? $number : $errors['number'] = 'Train Number is required';
-
         $date = $_POST['date'];
+        $number = $GLOBALS["___conn"]->real_escape_string($number);
         $date = $GLOBALS["___conn"]->real_escape_string($date);
-        if (!validateDate($date)) {
-            $errors['date'] = 'Invalid date format.';
-        } else if (strtotime($date) < time()) {
-            $errors['date'] = 'Past Date.';
-        } 
         
         if(empty($number)){
 			$errors['number'] = 'Train Number is required';
@@ -29,7 +26,6 @@ DatabaseConnect();
         if(empty($date)){
             $errors['date'] = 'Date is required';
         }  
-
         if(! array_filter($errors)){ 
             //CHECK VALID TRAIN
             $query1 = "SELECT * FROM trains_status WHERE t_number = '$number' AND t_date = '$date'";
@@ -65,7 +61,7 @@ DatabaseConnect();
 <head>
     <title>Check Train Status</title>
 </head>
-<?php include WEB_PAGE_TO_ROOT ."template/header.php" ?>
+<?php include WEB_PAGE_TO_ROOT ."template/header-name.php" ?>
 <style> 
     table { 
         width: 90%;
@@ -88,12 +84,12 @@ DatabaseConnect();
         font-weight: lighter; 
     } 
 </style> 
-<div style="margin-top:50px;">
+<div style="margin-top:200px;">
     <form style="padding:50px;" action="view-status.php" method=POST>
         <h3 class = "heading">Check Seats Available For Booking</h3>
             <label>
                 <p class="label-txt">TRAIN NUMBER</p>
-                <input type="number" class="input" name="number" pattern="\d{0,19}" maxlength="19" minlength="7" required value="<?php echo htmlspecialchars($number) ?>" oninput="validatePNR(this)">
+                <input type="number" class="input" min=0 name="number" value="<?php echo htmlspecialchars($number) ?>">
                 <div class="line-box">
                     <div class="line"></div>
                 </div>
@@ -101,14 +97,14 @@ DatabaseConnect();
             </label>
             <label>
                 <p class="label-txt">DATE</p>
-                <input type="date" class="input" name="date" required value="<?php echo htmlspecialchars($date) ?>"  oninput="validateDate(this)">
+                <input type="date" class="input" name="date" value="<?php echo htmlspecialchars($date) ?>">
                 <div class="line-box">
                     <div class="line"></div>
                 </div>
                 <p class= "bg-danger text-white"><?php echo htmlspecialchars($errors['date'])?></p>
             </label>
             <p class= "bg-danger text-white"><?php echo htmlspecialchars($errors['final'])?></p>
-  
+        <a href="index" class="register">Back</a>
         <button type="submit" name="submit" value="submit">Check</button>
         <br><br>
         
@@ -125,29 +121,6 @@ DatabaseConnect();
         
     </form>
 </div>
-
-<script>
-    function validatePNR(input) {
-        const value = input.value;
-            if (!/^\d{0,19}$/.test(value)) {
-                input.setCustomValidity("Input must be less than 20 digits.");
-            } else {
-                input.setCustomValidity("");
-            }
-    }
-
-    function validateDate(input) {
-            const date = new Date(input.value);
-            const currentDate = new Date();
-            if (isNaN(date.getTime())) {
-                input.setCustomValidity("Invalid date format.");
-            } else if (date < currentDate) {
-                input.setCustomValidity("Past Date.");
-            } else {
-                input.setCustomValidity("");
-            }
-        }
-</script>
 
 
 </html>

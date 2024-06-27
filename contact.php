@@ -1,14 +1,13 @@
+<?php 
+    define( 'WEB_PAGE_TO_ROOT', '' );
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <title>Contact Us</title>
 </head>
 <?php 
-    session_start();
-    if(isset($_SESSION['username']))
-        include "template/header-name.php";
-    else
-        include "template/header.php";
+    include WEB_PAGE_TO_ROOT ."template/header.php";
 ?>
 
 <div style="margin-top:150px;">

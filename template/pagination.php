@@ -1,6 +1,6 @@
 <?php 
     $results_per_page = 5;  
-    $result = $conn->query($sql); 
+    $result = $GLOBALS["___conn"]->query($sql); 
     $number_of_result = $result->num_rows;
     $number_of_page = ceil ($number_of_result / $results_per_page);    
     if (!isset ($_GET['page']) ) {  

@@ -1,16 +1,23 @@
 <?php
 
-define( 'WEB_PAGE_TO_ROOT', '' );
+define( 'WEB_PAGE_TO_ROOT', '../' );
 require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
+
+PageStartup( array( 'authenticated' ) );
     
 DatabaseConnect();
+if (checkPermissions($_SESSION['user_id'], 2) == "false") {
+    header("HTTP/1.0 403 Forbidden");
+    require_once WEB_PAGE_TO_ROOT . '404.php';
+    exit();
+  }
 
     // FOR PAGINATION
     $sql = "SELECT * FROM trains ORDER BY t_date DESC";
 
     include WEB_PAGE_TO_ROOT ."template/pagination.php";  
     
-    $sql = "SELECT *FROM trains ORDER BY t_date ASC LIMIT " . $page_first_result . ',' . $results_per_page;  
+    $sql = "SELECT *FROM trains ORDER BY t_date DESC LIMIT " . $page_first_result . ',' . $results_per_page;  
     $result = $GLOBALS["___conn"]->query($sql); 
     $GLOBALS["___conn"]->close();  
 ?>
@@ -23,7 +30,10 @@ DatabaseConnect();
 </head>
 
 <?php 
-    include WEB_PAGE_TO_ROOT ."template/header.php";
+    if(isset($_SESSION['username']))
+        include WEB_PAGE_TO_ROOT ."template/header-name.php";
+    else
+        include WEB_PAGE_TO_ROOT ."template/header.php";
 ?>
 
 <style> 
@@ -81,7 +91,7 @@ DatabaseConnect();
     <?php } ?> 
 
     <br><br><br>
-   
+    <a href="index" class="register">Back</a>
 </form>
 </div>
 

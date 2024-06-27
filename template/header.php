@@ -17,31 +17,29 @@
   <div class="collapse navbar-collapse" id="navbarSupportedContent">
     <ul class="navbar-nav mr-auto">
       <li class="nav-item active">
-        <a class="nav-link" href="index.php">Home</a>
+        <a class="nav-link" href="index">Home</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="view-ticket.php">Ticket</a>
+        <a class="nav-link" href="view-ticket">Ticket</a>
       </li>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="view-trains.php">Trains</a>
+        <a class="nav-link" href="view-trains">Trains</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="view-status.php">Train Status</a>
+        <a class="nav-link" href="view-status">Train Status</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="about.php">About Us</a>
+        <a class="nav-link" href="about">About Us</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="contact.php">Contact Us</a>
+        <a class="nav-link" href="contact">Contact Us</a>
       </li>
-      
     </ul>
     <ul class="pull-right nav navbar-nav">
       <li class="nav-item">
-          <a class="nav-link" href="index.php">Login</a>
+          <a class="nav-link" href="index">Login</a>
       </li>
     </ul>
-    
   </div>
 </nav>

@@ -146,6 +146,3 @@ The Online Train Ticket Booking System is a comprehensive solution for managing 
 ![alt text](screenshort/image11.png)
 
 ![alt text](screenshort/image12.png)
-
-
-

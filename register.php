@@ -1,19 +1,17 @@
 <?php
-    include "include/connection.inc.php";
-    DatabaseConnect();
+define( 'WEB_PAGE_TO_ROOT', '' );
+require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
+
+Logout();
+PageStartup( array( ) );
+
+DatabaseConnect();
 
     $errors = array('name' => '', 'username' => '', 'email' => '', 'address' => '', 'password' => '', 'confirmp' => '', 'error' => '');
     $success = array('sucess' => '');
     $name = $username = $email = $address = $password = $confirmp = $error = $sucess= '';
 
     if(isset($_POST['register']) && isset ($_POST['name']) && isset ($_POST['email']) && isset ($_POST['password']) && isset ($_POST['confirmp'])){
-
-        // Anti-CSRF
-        // if (array_key_exists ("session_token", $_SESSION)) {
-        //   $session_token = $_SESSION[ 'session_token' ];
-        // } else {
-        //   $session_token = "";
-        // }
 
         // checkToken( $_REQUEST[ 'user_token' ], $session_token, 'register.php' );
 
@@ -57,11 +55,29 @@
         $confirmp = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $confirmp ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
         $confirmp = sha1( $confirmp );
 
-        if(strlen($password) < 1){
-            $errors['password'] = 'Password must be minimum 8 characters';
+        if (empty($name)) {
+            $errors['name'] = 'Name is required';
+        }
+    
+        if (empty($username) || !preg_match('/^[a-zA-Z]+$/', $username)) {
+            $errors['username'] = 'Username must consist of letters only';
+        }
+    
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Email must be a valid email address';
+        }
+    
+        if (empty($address)) {
+            $errors['address'] = 'Address is required';
+        }
+    
+        if (empty($password) || strlen($password) < 3) {
+            $errors['password'] = 'Password must be at least 8 characters';
         }
 
-        
+        if($confirmp != $password){
+            $errors['confirmp'] = 'Confirm your password again';
+        } 
 
         // Check the database (Check user information)
         $data = $db->prepare( 'SELECT user, email FROM users WHERE user = (:user) OR email = (:email) LIMIT 1;' );
@@ -74,9 +90,7 @@
             $errors['error'] = 'Username or Email Exits';
         }
 
-        if($confirmp != $password){
-            $errors['confirmp'] = 'Confirm your password again';
-        } 
+        
 
         if(! array_filter($errors)){
             // Update database
@@ -89,14 +103,30 @@
 
             if ( $data->execute() ) {
                 if ( $data->rowCount() == 1 ) {
+
                     $db = NULL;
                     $success['sucess'] = "User Has Been Registed.";
-                    sleep(2);
-                    header('Location: index.php');
+
+                    $table = 'users';
+                    $data = '('. 'user => '. $username . "," .'name => '. $name . ",". 'email => '. $email . ",". 'address => '. $address . ",". 'released => '. $admin_name. ')';
+                    $presant_data = hash('sha256', hash('sha256', $data));
+                    action_logs($table,$_SESSION['user'], "Register User",$presant_data);
+                    sleep(6);
+                    // Redirect('index.php');
                 } else {
+
+                    $table = 'users';
+                    $data = '('. 'user => '. $username . "," .'name => '. $name . ",". 'email => '. $email . ",". 'address => '. $address . ",". 'released => '. $admin_name. ')';
+                    $presant_data = hash('sha256', hash('sha256', $data));
+                    action_logs($table,$_SESSION['user'], "Fail to Register User",$presant_data);
                     $errors['error'] = "Error inserting user.";
                 }
             } else {
+
+                $table = 'users';
+                $data = '('. 'user => '. $username . "," .'name => '. $name . ",". 'email => '. $email . ",". 'address => '. $address . ",". 'released => '. $admin_name. ')';
+                $presant_data = hash('sha256', hash('sha256', $data));
+                action_logs($table,$_SESSION['user'], "Fail to Register User",$presant_data);
                 $errors['error'] = "Error inserting user.";
             }
         }
@@ -124,7 +154,7 @@
     </label>
     <label>
         <p class="label-txt">USERNAME</p>
-        <input type="text" class="input" name="username" size = "20" required>
+        <input type="text" class="input" name="username" size = "20" required value="<?php echo htmlspecialchars($username) ?>">
         <div class="line-box">
             <div class="line"></div>
         </div>
@@ -132,7 +162,7 @@
     </label>
     <label>
         <p class="label-txt">EMAIL</p>
-        <input type="email" class="input" name="email" size = "20" required>
+        <input type="email" class="input" name="email" size = "20" required value="<?php echo htmlspecialchars($email) ?>">
         <div class="line-box">
             <div class="line"></div>
         </div>
@@ -140,7 +170,7 @@
     </label>
     <label>
         <p class="label-txt">ADDRESS</p>
-        <input type="text" class="input" name="address" size = "20" required>
+        <input type="text" class="input" name="address" size = "20" required value="<?php echo htmlspecialchars($address) ?>">
         <div class="line-box">
             <div class="line"></div>
         </div>

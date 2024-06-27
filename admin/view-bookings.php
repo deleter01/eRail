@@ -1,22 +1,22 @@
 <?php
-    session_start();
-    //To prevent user to access the page without login
-    if(isset($_SESSION['username'])){
-        if($_SESSION['username'] != 'admin1' && $_SESSION['username'] != 'admin'){
-          header('Location: user.php');
-        }
-    }
-    else{
-        header('Location: admin-login.php');
-    }
+define( 'WEB_PAGE_TO_ROOT', '../' );
+require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
 
-    include "include/connection.inc.php";
+PageStartup( array( 'authenticated' ) );
+    
+DatabaseConnect();
+if (checkPermissions($_SESSION['user_id'], 1) == "false") {
+    header("HTTP/1.0 403 Forbidden");
+    require_once WEB_PAGE_TO_ROOT . '404.php';
+    exit();
+  }
+
     // FOR PAGINATION
     $sql = "SELECT * FROM ticket";
-    include "template/pagination.php";
+    include WEB_PAGE_TO_ROOT ."template/pagination.php";
     $sql = "SELECT * FROM ticket LIMIT " . $page_first_result . ',' . $results_per_page;  
-    $result = $conn->query($sql); 
-    $conn->close();
+    $result = $GLOBALS["___conn"]->query($sql); 
+    $GLOBALS["___conn"]->close();
 ?>
 
 <!DOCTYPE html>
@@ -24,7 +24,7 @@
 <head>
     <title>Bookings</title>
 </head>
-<?php include "template/header-name.php" ?>
+<?php include WEB_PAGE_TO_ROOT ."template/header-name.php" ?>
 <style> 
     table { 
         width: 100%;
@@ -83,7 +83,7 @@
         <?php } ?> 
 
         <br><br><br>
-        <a href="admin-page.php" class= "register">Back</a>
+        <a href="index" class= "register">Back</a>
 
     </form>
 </div>

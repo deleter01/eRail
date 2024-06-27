@@ -1,17 +1,16 @@
 <?php
-    session_start();
-    //To prevent user to access the page without login
-    if(isset($_SESSION['username'])){
-        if($_SESSION['username'] != 'admin1' && $_SESSION['username'] != 'admin'){
-          header('Location: user.php');
-        }
-    }
-    else{
-        header('Location: admin-login.php');
-    }
+
+define( 'WEB_PAGE_TO_ROOT', '../' );
+require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
+
+PageStartup( array( 'authenticated' ) );
     
-    include "include/connection.inc.php";
-    DatabaseConnect();
+DatabaseConnect();
+if (checkPermissions($_SESSION['user_id'], 1) == "false") {
+    header("HTTP/1.0 403 Forbidden");
+    require_once WEB_PAGE_TO_ROOT . '404.php';
+    exit();
+}
 
     $errors = array('train_number' => '', 'date' => '', 'num_ac' => '', 'num_sleeper' => '', 'checks' => '', 'error' => '');
     $train_number = $date = $num_ac = $num_sleeper = $checks = $error = ''; 
@@ -19,14 +18,8 @@
    
     if(isset($_POST['release']) && isset ($_POST['train_number']) && isset ($_POST['date']) && isset ($_POST['num_ac']) && isset ($_POST['num_sleeper'])){
 
-        // Anti-CSRF
-        // if (array_key_exists ("session_token", $_SESSION)) {
-        //   $session_token = $_SESSION[ 'session_token' ];
-        // } else {
-        //   $session_token = "";
-        // }
-
-        // checkToken( $_REQUEST[ 'user_token' ], $session_token, 'release-train.php' );
+        // Check Anti-CSRF token
+	    checkToken( $_REQUEST[ 'user_token' ], $_SESSION[ 'session_token' ], 'index.php' );
 
         $train_number = $_POST['train_number'];
         $train_number = trim( $train_number );
@@ -61,7 +54,7 @@
         }
 
         // Check the database (Check train information)
-        $data = $db->prepare( 'SELECT t_number, t_date FROM train WHERE t_number = (:train_number) AND t_date = (:date) LIMIT 1;' );
+        $data = $db->prepare( 'SELECT t_number, t_date FROM trains WHERE t_number = (:train_number) AND t_date = (:date) LIMIT 1;' );
         $data->bindParam(':train_number', $train_number, PDO::PARAM_STR);
         $data->bindParam(':date', $date, PDO::PARAM_STR);
         $data->execute();
@@ -73,7 +66,7 @@
  
         if (! array_filter($errors)) {
             
-            $data = $db->prepare('INSERT INTO train (t_number, t_date, num_ac, num_sleeper, released_by) VALUES (:train_number, :date, :num_ac, :num_sleeper, :released)');
+            $data = $db->prepare('INSERT INTO trains (t_number, t_date, num_ac, num_sleeper, released_by) VALUES (:train_number, :date, :num_ac, :num_sleeper, :released)');
             $data->bindParam(':train_number', $train_number, PDO::PARAM_STR);
             $data->bindParam(':date', $date, PDO::PARAM_STR);
             $data->bindParam(':num_ac', $num_ac, PDO::PARAM_INT);
@@ -83,26 +76,46 @@
             if ($data->execute()) {
                 if ($data->rowCount() == 1) {
 
-                    $data = $db->prepare('INSERT INTO train_status (t_number, t_date, seats_b_ac, seats_b_sleeper) VALUES (:train_number, :date, 0, 0)');
+                    $table='trains';
+                    $data = '('. 'train_number => '. $train_number . "," .'date => '. $date . ",". 'num_ac => '. $num_ac . ",". 'num_sleeper => '. $num_sleeper . ",". 'released => '. $admin_name . ')';
+                    $presant_data = hash('sha256', hash('sha256', $data));
+                    action_logs($table,$_SESSION['user'], "Release a Train",$data);
+
+                    $data = $db->prepare('INSERT INTO trains_status (t_number, t_date, seats_b_ac, seats_b_sleeper) VALUES (:train_number, :date, 0, 0)');
                     $data->bindParam(':train_number', $train_number, PDO::PARAM_STR);
                     $data->bindParam(':date', $date, PDO::PARAM_STR);
 
                     if ($data->execute()) {
                         if ($data->rowCount() == 1) {
+
+                            $table='trains_status';
+                            $data = '('. 'train_number => '. $train_number . "," .'date => '. $date . ')';
+                            $presant_data = hash('sha256', hash('sha256', $data));
+                            action_logs($table,$_SESSION['user'], "Train Status",$data);
+                            
                             $db = NULL;
                             $errors['error'] = 'sucess';
                             $success['success'] .= "Train has been registered.";
-                            sleep(6);
-                            header('Location: admin-page.php');
+                            sleep(12);
+                            Redirect('index.php');
                             exit(); 
                         }
                     }
 
                     
                 } else {
+                    $table='trains_status';
+                    $data = '('. 'train_number => '. $train_number . "," .'date => '. $date . ')';
+                    $presant_data = hash('sha256', hash('sha256', $data));
+                    action_logs($table,$_SESSION['user'], "Fail to Enter Train Status",$data);
                     $errors['error'] .= "Error inserting train.";
                 }
             } else {
+
+                $table='trains';
+                $data = '('. 'train_number => '. $train_number . "," .'date => '. $date . ",". 'num_ac => '. $num_ac . ",". 'num_sleeper => '. $num_sleeper . ",". 'released => '. $admin_name . ')';
+                $presant_data = hash('sha256', hash('sha256', $data));
+                action_logs($table,$_SESSION['user'], "Fail to Release a Train",$data);
                 $errors['error'] .= "Error inserting train.";
             }
         }
@@ -116,14 +129,14 @@
 <head>
     <title>Release Train</title>
 </head>
-<?php include "template/header-name.php" ?>
+<?php include WEB_PAGE_TO_ROOT ."template/header-name.php" ?>
 
 <div style="margin-top:100px;">
-<form action="release-train.php" method="POST">
+<form action="<?php  $_SERVER['PHP_SELF'] ?>" method="POST">
     <h3 class="heading">Release New Train</h3> <br>
     <label>
     <p class="label-txt">TRAIN NUMBER</p>
-    <input type="number" class="input" min=0 name="train_number" value="<?php echo htmlspecialchars($train_number) ?>">
+    <input type="number" class="input" min=0 size = "10" name="train_number" value="<?php echo htmlspecialchars($train_number) ?>">
     <div class="line-box">
         <div class="line"></div>
     </div>
@@ -131,7 +144,7 @@
     </label>
     <label>
     <p class="label-txt">DATE</p>
-    <input type="date" class="input" name="date" value="<?php echo htmlspecialchars($date) ?>">
+    <input type="date" class="input" name="date" size = "10" value="<?php echo htmlspecialchars($date) ?>">
     <div class="line-box">
         <div class="line"></div>
     </div>
@@ -139,7 +152,7 @@
     </label>
     <label>
     <p class="label-txt">NUMBER OF AC COACHES</p>
-    <input type="number" class="input" min=0 name="num_ac" value="<?php echo htmlspecialchars($num_ac) ?>">
+    <input type="number" class="input" min=0 name="num_ac" size = "10" value="<?php echo htmlspecialchars($num_ac) ?>">
     <div class="line-box">
         <div class="line"></div>
     </div>
@@ -147,7 +160,7 @@
     </label>
     <label>
     <p class="label-txt">NUMBER OF SLEEPER COACHES</p>
-    <input type="number" class="input" name="num_sleeper" min=0 value="<?php echo htmlspecialchars($num_sleeper) ?>">
+    <input type="number" class="input" name="num_sleeper" size = "10" min=0 value="<?php echo htmlspecialchars($num_sleeper) ?>">
     <div class="line-box">
         <div class="line"></div>
     </div>
@@ -155,8 +168,9 @@
     </label>
     <p class= "bg-danger text-white"><?php echo htmlspecialchars($errors['checks'])?></p>
     <p class= "bg-danger text-white"><?php echo htmlspecialchars($errors['error'])?></p>
-    <a href="admin-page.php" class="register">Back</a>
+    <a href="index" class="register">Back</a>
     <button type="submit" name="release" value="submit">Release</button>
+    <input type="hidden" class="input" name="user_token" value="<?php echo $_SESSION[ 'session_token' ] ?>" />
 </form>
 </div>
 

@@ -1,24 +1,22 @@
 <?php
-    session_start();
-    //To prevent user to access the page without login
-    if(isset($_SESSION['username'])){
-        if($_SESSION['username'] == 'admin1' || $_SESSION['username'] == 'admin'){
-          header('Location: admin-login.php');
-        }
-    }
-    else{
-        header('Location: index.php');
-    }
+define( 'WEB_PAGE_TO_ROOT', '../' );
+require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
 
-    include "include/connection.inc.php";
-    DatabaseConnect();
+PageStartup( array( 'authenticated' ) );
     
-    $query = "SELECT * FROM passenger WHERE pnr_no = '".$_SESSION['pnr_no']."' ";
-    if($conn->query($query) == FALSE){
-        echo $conn->error;
+DatabaseConnect();
+if (checkPermissions($_SESSION['user_id'], 2) == "false") {
+    header("HTTP/1.0 403 Forbidden");
+    require_once WEB_PAGE_TO_ROOT . '404.php';
+    exit();
+}
+    
+    $query = "SELECT * FROM passengers WHERE pnr_no = '".$_SESSION['pnr_no']."' ";
+    if($GLOBALS["___conn"]->query($query) == FALSE){
+        echo $GLOBALS["___conn"]->error;
     }
-    $result = $conn->query($query);
-    $conn->close(); 
+    $result = $GLOBALS["___conn"]->query($query);
+    $GLOBALS["___conn"]->close(); 
 
 ?>
 
@@ -27,7 +25,7 @@
 <head>
     <title>Ticket</title>
 </head>
-<?php include "template/header-name.php" ?>
+<?php include WEB_PAGE_TO_ROOT ."template/header-name.php" ?>
 <style> 
     table { 
         width: 90%;
@@ -107,7 +105,7 @@
     </section> 
     <br>
     <h5> Have a Safe Journey! </h5><br>
-    <a href="user.php" class= "register">Home</a>
+    <a href="index" class= "register">Home</a>
     <button onclick="window.print()">Print Ticket</button>
     
 </form>

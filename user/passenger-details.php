@@ -1,17 +1,15 @@
 <?php
-    session_start();
-    //To prevent user to access the page without login
-    if(isset($_SESSION['username'])){
-        if($_SESSION['username'] == 'admin1' || $_SESSION['username'] == 'admin'){
-          header('Location: admin-login.php');
-        }
-    }
-    else{
-        header('Location: index.php');
-    }
+define( 'WEB_PAGE_TO_ROOT', '../' );
+require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
 
-    include "include/connection.inc.php";
-    DatabaseConnect();
+PageStartup( array( 'authenticated' ) );
+    
+DatabaseConnect();
+if (checkPermissions($_SESSION['user_id'], 2) == "false") {
+  header("HTTP/1.0 403 Forbidden");
+  require_once WEB_PAGE_TO_ROOT . '404.php';
+  exit();
+}
 
     $num_passengers = $_SESSION['num_passengers'];
     $errors = array('validate' => '', 'seats' => '');
@@ -65,30 +63,38 @@
       // try {
         // IF AVAILABLE THEN REDIRECT GET TICKET ELSE FAILURE PAGE
         $query1 = "CALL check_seats_availabilty('$train_number', '$date', '$coach', '$num_passengers')";
-        if ($conn->query($query1) === FALSE) {
-          $_SESSION['seats_error'] = $conn->error;
-          header('Location: not-available.php');
+        if ($GLOBALS["___conn"]->query($query1) === FALSE) {
+          $_SESSION['seats_error'] = $GLOBALS["___conn"]->error;
+          Redirect('not-available.php');
         }
         else{
           // GENERATE PNR NUMBER & INSERT INTO TICKET
           $query1 = "CALL generate_pnr('".$_SESSION['username']."', @p1, '$coach', '$train_number', '$date'); SELECT @p1 AS pnr_no;";
-          if($conn->multi_query($query1) == FALSE){
-            echo $conn->error;
+          if($GLOBALS["___conn"]->multi_query($query1) == FALSE){
+            echo $GLOBALS["___conn"]->error;
           }
-          $conn->next_result();
-          $result = $conn->store_result();      
+          $GLOBALS["___conn"]->next_result();
+          $result = $GLOBALS["___conn"]->store_result();      
           $pnr_no = $result->fetch_object()->pnr_no;
           $_SESSION['pnr_no'] = $pnr_no;
 
           // ASSIGN BERTH NO & COACH NO & INSERT INTO PASSENGER
           for($i=0; $i<$num_passengers; $i++){
             $query1 = "CALL assign_berth('$train_number', '$date', '$coach', '$name[$i]', '$age[$i]', '$gender[$i]', '$pnr_no')";
-            if ($conn->query($query1) === FALSE) {
-              echo $conn->error;
+            if ($GLOBALS["___conn"]->query($query1) === FALSE) {
+              echo $GLOBALS["___conn"]->error;
             }
           }
 
-          header('Location: get-ticket.php');
+          // ASSIGN BERTH NO & COACH NO & INSERT INTO PASSENGER
+          // for($i=0; $i<$num_passengers; $i++){
+          //   $query1 = assign_berth($train_number, $date, $coach, $name[$i], $age[$i], $gender[$i], $pnr_no);
+          //   if ($GLOBALS["___conn"]->query($query1) === FALSE) {
+          //     echo $GLOBALS["___conn"]->error;
+          //   }
+          // }
+
+          Redirect('get-ticket.php');
          
         }
 
@@ -107,7 +113,7 @@
 <head>
     <title>Enter Details</title>
 </head>
-<?php include "template/header-name.php" ?>
+<?php include WEB_PAGE_TO_ROOT ."template/header-name.php" ?>
 
 <div style="margin-top:100px;">
 <form method="post" action="passenger-details.php" style="width: 55%;">
@@ -124,13 +130,13 @@
    <td> Passenger&nbsp<?php echo $i+1 ?>&nbsp&nbsp&nbsp
    </td>
    <td>
-	<input type="text" name="name[]" placeholder="Enter name" value = "<?php echo $name[$i] ?>">
+	<input type="text" name="name[]" placeholder="Enter name" class="input" value = "<?php echo $name[$i] ?>">
 	</td>
 	<td>
-	<input type="number" name="age[]" placeholder="Enter Age" value = "<?php echo $age[$i] ?>">
+	<input type="number" name="age[]" placeholder="Enter Age" class="input" value = "<?php echo $age[$i] ?>">
 	</td>
 	<td>
-	<select name="gender[]">
+	<select name="gender[]" class="input">
     <option value="Female" <?php echo (isset($gender[$i]) && $gender[$i] === 'Female') ? 'selected' : ''; ?>>Female</option>
     <option value="Male" <?php echo (isset($gender[$i]) && $gender[$i] === 'Male') ? 'selected' : ''; ?>>Male</option>
 	</select>
@@ -142,7 +148,7 @@
 
   <p class= "bg-danger text-white"><?php echo htmlspecialchars($errors['validate'])?></p>
 
-  <a href="book-ticket.php" class="register">Back</a>
+  <a href="book-ticket" class="register">Back</a>
   <button type="submit" name="check" value="submit">Check Availability</button>
  </form>
 </div>

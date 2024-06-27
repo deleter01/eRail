@@ -1,16 +1,16 @@
 <?php
-session_start();
-// To prevent user to access the page without login
-if(isset($_SESSION['username'])){
-    if($_SESSION['username'] == 'admin1' || $_SESSION['username'] == 'admin'){
-        header('Location: admin-page.php');
-    }
-}
-else{
-    header('Location: index.php');
-}
-include "include/connection.inc.php";
+define( 'WEB_PAGE_TO_ROOT', '../' );
+require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
+
+PageStartup( array( 'authenticated' ) );
+    
 DatabaseConnect();
+if (checkPermissions($_SESSION['user_id'], 2) == "false") {
+    header("HTTP/1.0 403 Forbidden");
+    require_once WEB_PAGE_TO_ROOT . '404.php';
+    exit();
+}
+
 $errors = array('train_number' => '', 'date' => '', 'num_passengers' => '', 'validate' => '', 'error' => '');
 $train_number = $date = $coach = $num_passengers = $error = ''; 
 
@@ -61,7 +61,7 @@ if(isset($_POST['next']) && isset($_POST['train_number']) && isset($_POST['date'
 
     // IF NO PREVIOUS ERRORS THEN CHECK VALIDITY OF TRAIN NUMBER & DATE
     if(!array_filter($errors)){
-        $data = $db->prepare('SELECT t_number, t_date FROM train WHERE t_number = :t_no AND t_date = :date LIMIT 1;');
+        $data = $db->prepare('SELECT t_number, t_date FROM trains WHERE t_number = :t_no AND t_date = :date LIMIT 1;');
         $data->bindParam(':t_no', $train_number, PDO::PARAM_STR);
         $data->bindParam(':date', $date, PDO::PARAM_STR);
         $data->execute();
@@ -79,7 +79,7 @@ if(isset($_POST['next']) && isset($_POST['train_number']) && isset($_POST['date'
         $_SESSION['date'] = $date;
         $_SESSION['coach'] = $coach;
         $_SESSION['num_passengers'] = $num_passengers;
-        header('Location: passenger-details.php');
+        Redirect('passenger-details.php');
     }
 }
 ?>
@@ -88,35 +88,8 @@ if(isset($_POST['next']) && isset($_POST['train_number']) && isset($_POST['date'
 <html lang="en">
 <head>
     <title>Book Ticket</title>
-    <script>
-        function findtrain() {
-            var date = document.getElementById("date").value;
-            var errorMessage = document.getElementById("error");
-            errorMessage.textContent = "";
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'fetch_trains.php?date=' + date, true);
-            xhr.onload = function () {
-                if (xhr.status === 200) {
-                    var response = JSON.parse(xhr.responseText);
-                    var trainSelect = document.getElementById("train_number");
-                    trainSelect.innerHTML = '<option value="">Select Train</option>'; // Clear previous options
-                    if (response.status === 'no_trains') {
-                        errorMessage.textContent = "No trains available for the selected date.";
-                    } else {
-                        response.trains.forEach(function(train) {
-                            var option = document.createElement("option");
-                            option.value = train.t_number;
-                            option.text = train.t_number;
-                            trainSelect.add(option);
-                        });
-                    }
-                } 
-            };
-            xhr.send();
-        }
-    </script>
 </head>
-<?php include "template/header-name.php"; ?>
+<?php include WEB_PAGE_TO_ROOT ."template/header-name.php"; ?>
 
 <div style="margin-top:100px;">
 <form action="book-ticket.php" method="POST">
@@ -153,9 +126,36 @@ if(isset($_POST['next']) && isset($_POST['train_number']) && isset($_POST['date'
     </label>
     <p class="bg-danger text-white"><?php echo htmlspecialchars($errors['error'])?></p>
     <br>
-    <a href="user.php" class="register">Back</a>
+    <a href="index" class="register">Back</a>
     <button type="submit" name="next" value="submit">Next</button>
 </form>
 </div>
+<script>
+        function findtrain() {
+            var date = document.getElementById("date").value;
+            var errorMessage = document.getElementById("error");
+            errorMessage.textContent = "";
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'fetch_trains.php?date=' + date, true);
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    var trainSelect = document.getElementById("train_number");
+                    trainSelect.innerHTML = '<option value="">Select Train</option>'; // Clear previous options
+                    if (response.status === 'no_trains') {
+                        errorMessage.textContent = "No trains available for the selected date.";
+                    } else {
+                        response.trains.forEach(function(train) {
+                            var option = document.createElement("option");
+                            option.value = train.t_number;
+                            option.text = train.t_number;
+                            trainSelect.add(option);
+                        });
+                    }
+                } 
+            };
+            xhr.send();
+        }
+    </script>
 </html>
 

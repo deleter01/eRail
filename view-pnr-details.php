@@ -1,18 +1,32 @@
 <?php
-    session_start();
+define( 'WEB_PAGE_TO_ROOT', '' );
+require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
+    
+DatabaseConnect();
 
-    include "include/connection.inc.php";
-    $query1 = "SELECT * FROM passenger WHERE pnr_no = '".$_SESSION['view_pnr']."' ";
-    if($conn->query($query1) == FALSE){
-        echo $conn->error;
-    }
-    $result1 = $conn->query($query1);
-    $query2 = "SELECT * FROM ticket WHERE pnr_no = '".$_SESSION['view_pnr']."' ";
-    if($conn->query($query2) == FALSE){
-        echo $conn->error;
-    }
-    $result2 = $conn->query($query2);
-    $conn->close(); 
+    $pnr = $_SESSION['view_pnr'];
+    $data = $db->prepare( 'SELECT * FROM passengers WHERE pnr_no = (:pnr);' );
+    $data->bindParam( ':pnr', $pnr, PDO::PARAM_STR );
+    $data->execute();
+
+    if( $data->rowCount() != 1 ){
+        $errors['pnr'] = "No Data Found";
+    } 
+
+    // $query1 = "SELECT * FROM passenger WHERE pnr_no = '".$_SESSION['view_pnr']."' ";
+    // if($conn->query($query1) == FALSE){
+    //     echo $conn->error;
+    // }
+    // $result1 = $conn->query($query1);
+
+    $sql = $db->prepare( 'SELECT * FROM ticket WHERE pnr_no = (:pnr) LIMIT 1;' );
+    $sql->bindParam( ':pnr', $pnr, PDO::PARAM_STR );
+    $sql->execute();
+
+    if( $data->rowCount() != 1 ){
+        $errors['pnr'] = "No Ticket Found";
+    } 
+
 
 ?>
 
@@ -54,7 +68,8 @@
             <td><h5><?php echo $_SESSION['view_pnr'] ?></h5></td>
         </tr>
         <?php
-            $row = $result2->fetch_object();
+            // $row = $result2->fetch_object();
+            $row = $sql->fetch(PDO::FETCH_OBJ);
         ?>
         <tr>
             <td><h5> Coach Type</h5></td>
@@ -83,23 +98,20 @@
                 <th>Coach Number</th> 
             </tr> 
             <?php 
-                while($rows=$result1->fetch_assoc()) 
-                { 
+                while ($rows = $data->fetch(PDO::FETCH_OBJ)) {
              ?> 
             <tr> 
-                <td><h5><?php echo $rows['name'];?></h5></td> 
-                <td><h5><?php echo $rows['berth_no'];?></h5></td> 
-                <td><h5><?php echo $rows['berth_type'];?></h5></td> 
-                <td><h5><?php echo $rows['coach_no'];?></h5></td> 
+                <td><h5><?php echo $rows->name;?></h5></td> 
+                <td><h5><?php echo $rows->berth_no;?></h5></td> 
+                <td><h5><?php echo $rows->berth_type;?></h5></td> 
+                <td><h5><?php echo $rows->coach_no;?></h5></td> 
             </tr> 
-            <?php 
-                } 
-             ?> 
+            <?php } ?> 
         </table> 
     </section> 
     <br>
 
-    <a href="index.php" class= "register">Back</a>
+    <a href="view-ticket.php" class= "register">Back</a>
     <button onclick="window.print()">Print Ticket</button>
     
 </form>

@@ -1,24 +1,38 @@
 <?php
-    session_start();
-    include "include/connection.inc.php";
+define( 'WEB_PAGE_TO_ROOT', '' );
+require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
+    
+DatabaseConnect();
+
     $errors = array('pnr' => '');
     $pnr = '';
-    if(isset($_POST['submit'])){
+    if(isset($_POST['submit']) && isset($_POST['pnr'])){
+        checkToken( $_REQUEST[ 'user_token' ], $_SESSION[ 'session_token' ], 'view-ticket.php' );
+
         $pnr = $_POST['pnr'];
-        $pnr = $conn->real_escape_string($pnr);
+        $pnr = trim( $pnr );
+        $pnr = stripslashes( $pnr );
+        $pnr = htmlspecialchars( $pnr );
 
-        //CHECK VALID PNR
-        $query1 = "CALL check_valid_pnr('$pnr');";
-        if ($conn->query($query1) === FALSE) {
-            $errors['pnr'] = $conn->error;
-        }
+        if (strlen($pnr) !== 12) {
+            $errors['pnr'] = "Invalid input.";
+        } else {
+             //CHECK VALID PNR
+            $data = $db->prepare( 'SELECT pnr_no FROM ticket WHERE pnr_no = (:pnr) LIMIT 1;' );
+            $data->bindParam( ':pnr', $pnr, PDO::PARAM_STR );
+            $data->execute();
+            $row = $data->fetch();
 
-        if(! array_filter($errors)){
-            $_SESSION['view_pnr'] = $pnr;
-            $conn->close();
-            header('Location: view-pnr-details.php');
+            if( $data->rowCount() == 1 ){
+                $_SESSION['view_pnr'] = $row['pnr_no'];
+                Redirect('view-pnr-details.php');
+            } else {
+                $errors['pnr'] = "No Data Found";
+            }
+
         }
     }
+generateSessionToken();
 ?>
 
 <!DOCTYPE html>
@@ -27,28 +41,32 @@
     <title>View Ticket</title>
 </head>
 <?php 
-    if(isset($_SESSION['username']))
-        include "template/header-name.php";
-    else
-        include "template/header.php";
+    include "template/header.php";
 ?>
 
 
 <div style="margin-top:200px;">
     <form style="padding:50px;" action="view-ticket.php" method=POST>
-    
         <label>
             <h3 class = "heading">ENTER YOUR PNR NUMBER</h3>
-            <input type="text" class="input" name="pnr" maxlength=12 value="<?php echo htmlspecialchars($pnr) ?>"> 
+            <input type="text" class="input" name="pnr" id="pnr" pattern=".{12}" minlength="12" maxlength="12" required oninput="validateSearchBox(this)" value="<?php echo htmlspecialchars($pnr) ?>"> 
+            <input type="hidden" name="user_token" value="<?php echo $_SESSION[ 'session_token' ]?>" />
             <div class="line-box">
             <div class="line"></div>
             </div>
             <p class= "bg-danger text-white"><?php echo htmlspecialchars($errors['pnr'])?></p>
         </label>
-        <a href="index.php" class="register">Back</a>
         <button type="submit" name="submit" value="submit">View Ticket</button>
     </form>
 </div>
-
+<script>
+    function validateSearchBox(input) {
+        if (input.value.length !== 12) {
+            input.setCustomValidity("Input must be exactly 12 characters long.");
+        } else {
+            input.setCustomValidity("");
+        }
+    }
+</script>
 
 </html>

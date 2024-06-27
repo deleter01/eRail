@@ -1,6 +1,12 @@
 <?php
 
     include "config/config.inc.php";
+	  
+function get_now_time(){	
+	$now=date("Y-m-d H:i:s", time());
+	return $now;
+}
+
 function start_session() {
 
 	$security_level = 'impossible';
@@ -17,11 +23,7 @@ function start_session() {
 	$secure = false;
 	$domain = parse_url($_SERVER['HTTP_HOST'], PHP_URL_HOST);
 
-	/*
-	 * Need to do this as you can't update the settings of a session
-	 * while it is open. So check if one is open, close it if needed
-	 * then update the values and start it again.
-	*/
+
 	if (session_status() == PHP_SESSION_ACTIVE) {
 		session_write_close();
 	}
@@ -195,4 +197,43 @@ function CurrentUser() {
 }
 
 // -- END (Session functions)
+function get_browsers($browser){
+	if(strpos($browser, 'MSIE') !== FALSE)
+   		$browser='Internet explorer';
+ 	elseif(strpos($browser, 'Trident') !== FALSE)
+    	$browser='Internet explorer';
+ 	elseif(strpos($browser, 'Firefox') !== FALSE)
+   		$browser='Mozilla Firefox';
+ 	elseif(strpos($browser, 'Chrome') !== FALSE)
+   		$browser='Google Chrome';
+ 	elseif(strpos($browser, 'Opera Mini') !== FALSE)
+   		$browser="Opera Mini";
+ 	elseif(strpos($browser, 'Opera') !== FALSE)
+   		$browser="Opera";
+ 	elseif(strpos($browser, 'Safari') !== FALSE)
+   		$browser="Safari";
+ 	else
+   		$browser='Something else';
+	return $browser;
+}
+
+function action_logs(){
+	if($flag==1 && $table!="chat" && $table!="result" && $table!="student_attendence" && $table!="site_activity" && $this->login_user!=""){
+		$activity=array();
+		$table_id=($action=="insert")?$res:$info['id'];
+		$login=($table=="login")?1:0;
+		$activity['user_id']=$this->login_user;
+		$activity['table_name']=$table;
+		$activity['action_type']=$action;
+		$activity['login']=$login;
+		$activity['table_id']=$table_id;
+		$activity['date']=$this->date();
+		$activity['ip']=$this->ip; 
+		$activity['browser']=$this->browser;
+		$activity['present_data']=$present_data;
+		$activity['previous_data']=$previous_data;
+	
+		$this->sql_action("site_activity","insert",$activity,"no");
+	  }
+}
 ?>
