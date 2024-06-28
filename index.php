@@ -153,14 +153,14 @@ echo "
     <h3 class=\"heading\">Welcome To eRail</h3>
   <label>
     <p class=\"label-txt\">ENTER YOUR USERNAME</p>
-    <input type=\"text\" class=\"input\" name=\"username\" size=\"10\" required>
+    <input type=\"text\" class=\"input\" name=\"username\" maxlength=\"20\" size=\"10\" required>
     <div class=\"line-box\">
       <div class=\"line\"></div>
     </div>
   </label>
   <label>
     <p class=\"label-txt\">ENTER YOUR PASSWORD</p>
-    <input type=\"password\" class=\"input\" name=\"password\" AUTOCOMPLETE=\"off\" size=\"20\" required>
+    <input type=\"password\" class=\"input\" name=\"password\" AUTOCOMPLETE=\"off\" maxlength=\"20\" size=\"20\" required>
     <div class=\"line-box\">
       <div class=\"line\"></div>
     </div>

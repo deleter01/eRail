@@ -21,6 +21,9 @@ DatabaseConnect();
         $name = trim( $name );
         $name = stripslashes( $name );
         $name = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $name ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
+        if (strlen($name) !== 20) {
+            $errors['error'] = "Invalid Length.";
+        }
 
         $username = $_POST['username'];
         $username = trim( $username );
@@ -28,6 +31,9 @@ DatabaseConnect();
         $username = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $username ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
         if(!preg_match('/^[a-zA-Z]+$/', $username)){
             $errors['username'] .= 'Username must consist of letters only';
+        }
+        if (strlen($username) !== 20) {
+            $errors['error'] = "Invalid Length.";
         }
 
         $email = $_POST['email'];
@@ -37,23 +43,35 @@ DatabaseConnect();
         if(!filter_var($email, FILTER_VALIDATE_EMAIL)){
             $errors['email'] = 'Email must be a valid email address';
         }
+        if (strlen($email) !== 25) {
+            $errors['error'] = "Invalid Length.";
+        }
 
         $address = $_POST['address'];
         $address = trim( $address );
         $address = stripslashes( $address );
         $address = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $address ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
+        if (strlen($address) !== 20) {
+            $errors['error'] = "Invalid Length.";
+        }
 
         $password = $_POST['password'];
         $password = trim( $password );
         $password = stripslashes( $password );
         $password = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $password ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
-        $password = sha1( $password );
+        $password = hash('sha256', $password);
+        if (strlen($name) !== 30) {
+            $errors['error'] = "Invalid Length.";
+        }
 
         $confirmp = $_POST['confirmp'];
         $confirmp = trim( $confirmp );
         $confirmp = stripslashes( $confirmp );
         $confirmp = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $confirmp ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
-        $confirmp = sha1( $confirmp );
+        $confirmp = hash('sha256', $confirmp);
+        if (strlen($name) !== 30) {
+            $errors['error'] = "Invalid Length.";
+        }
 
         if (empty($name)) {
             $errors['name'] = 'Name is required';
@@ -146,7 +164,7 @@ DatabaseConnect();
     <h3 class="heading">Register on eRail</h3>
     <label>
         <p class="label-txt">FULL NAME</p>
-        <input type="text" class="input" name="name" value="<?php echo htmlspecialchars($name) ?>">
+        <input type="text" class="input" name="name" maxlength="30" size = "30" onchange="validateBox('name')" value="<?php echo htmlspecialchars($name) ?>">
         <div class="line-box">
             <div class="line"></div>
         </div>
@@ -154,7 +172,7 @@ DatabaseConnect();
     </label>
     <label>
         <p class="label-txt">USERNAME</p>
-        <input type="text" class="input" name="username" size = "20" required value="<?php echo htmlspecialchars($username) ?>">
+        <input type="text" class="input" name="username" maxlength="20" size = "20" required value="<?php echo htmlspecialchars($username) ?>">
         <div class="line-box">
             <div class="line"></div>
         </div>
@@ -162,7 +180,7 @@ DatabaseConnect();
     </label>
     <label>
         <p class="label-txt">EMAIL</p>
-        <input type="email" class="input" name="email" size = "20" required value="<?php echo htmlspecialchars($email) ?>">
+        <input type="email" class="input" name="email" maxlength="30" size = "30" required value="<?php echo htmlspecialchars($email) ?>">
         <div class="line-box">
             <div class="line"></div>
         </div>
@@ -170,7 +188,7 @@ DatabaseConnect();
     </label>
     <label>
         <p class="label-txt">ADDRESS</p>
-        <input type="text" class="input" name="address" size = "20" required value="<?php echo htmlspecialchars($address) ?>">
+        <input type="text" class="input" name="address" maxlength="30" size = "30" required value="<?php echo htmlspecialchars($address) ?>">
         <div class="line-box">
             <div class="line"></div>
         </div>
@@ -178,7 +196,7 @@ DatabaseConnect();
     </label>
     <label>
         <p class="label-txt">PASSWORD</p>
-        <input type="password" class="input" name="password" size = "20" required>
+        <input type="password" class="input" name="password" maxlength="50" minlength="8" size = "50" required>
         <div class="line-box">
             <div class="line"></div>
         </div>
@@ -186,7 +204,7 @@ DatabaseConnect();
     </label>
     <label>
         <p class="label-txt">CONFIRM PASSWORD</p>
-        <input type="password" class="input" name="confirmp" size = "20" required>
+        <input type="password" class="input" name="confirmp" maxlength="50" minlength="8" size = "50" required>
         <div class="line-box">
             <div class="line"></div>
         </div>
@@ -199,5 +217,15 @@ DatabaseConnect();
 </form>
 </div>
 
+<script>
+    function validateBox(input) {
+        var name = document.getElementById("name").value;
+        if (name.value.length >= 20) {
+            input.setCustomValidity("Input must be not be greater than 20  characters long.");
+        } else {
+            input.setCustomValidity("");
+        }
+    }
+</script>
 
 </html>
