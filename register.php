@@ -1,6 +1,7 @@
 <?php
 define( 'WEB_PAGE_TO_ROOT', '' );
 require_once WEB_PAGE_TO_ROOT . 'include/Page.inc.php';
+require_once WEB_PAGE_TO_ROOT . 'include/send_otp.php';
 
 Logout();
 PageStartup( array( ) );
@@ -21,8 +22,8 @@ DatabaseConnect();
         $name = trim( $name );
         $name = stripslashes( $name );
         $name = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $name ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
-        if (strlen($name) !== 20) {
-            $errors['error'] = "Invalid Length.";
+        if (strlen($name) >= 20) {
+            $errors['error'] = "Invalid Fullname Length.";
         }
 
         $username = $_POST['username'];
@@ -32,8 +33,8 @@ DatabaseConnect();
         if(!preg_match('/^[a-zA-Z]+$/', $username)){
             $errors['username'] .= 'Username must consist of letters only';
         }
-        if (strlen($username) !== 20) {
-            $errors['error'] = "Invalid Length.";
+        if (strlen($username) >= 20) {
+            $errors['error'] = "Invalid Username Length.";
         }
 
         $email = $_POST['email'];
@@ -43,34 +44,37 @@ DatabaseConnect();
         if(!filter_var($email, FILTER_VALIDATE_EMAIL)){
             $errors['email'] = 'Email must be a valid email address';
         }
-        if (strlen($email) !== 25) {
-            $errors['error'] = "Invalid Length.";
+        if (strlen($email) >= 30) {
+            $errors['error'] = "Invalid Email Length.";
         }
 
         $address = $_POST['address'];
         $address = trim( $address );
         $address = stripslashes( $address );
         $address = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $address ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
-        if (strlen($address) !== 20) {
-            $errors['error'] = "Invalid Length.";
+        if (strlen($address) >= 20) {
+            $errors['error'] = "Invalid Address Length.";
         }
 
         $password = $_POST['password'];
         $password = trim( $password );
         $password = stripslashes( $password );
         $password = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $password ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
-        $password = hash('sha256', $password);
-        if (strlen($name) !== 30) {
-            $errors['error'] = "Invalid Length.";
+        
+        if (strlen($password) >= 50) {
+            $errors['error'] = "Invalid Password Length.";
         }
+        // if(!isValidPassword($password)){
+        //     $errors['error'] = 'Password must be between 8 and 10 characters long, and contain at least one number, one uppercase letter, and one lowercase letter.';
+        // }
 
         $confirmp = $_POST['confirmp'];
         $confirmp = trim( $confirmp );
         $confirmp = stripslashes( $confirmp );
         $confirmp = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $confirmp ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
-        $confirmp = hash('sha256', $confirmp);
-        if (strlen($name) !== 30) {
-            $errors['error'] = "Invalid Length.";
+
+        if (strlen($confirmp) >= 50) {
+            $errors['error'] = "Invalid Confirm Password Length.";
         }
 
         if (empty($name)) {
@@ -96,7 +100,10 @@ DatabaseConnect();
         if($confirmp != $password){
             $errors['confirmp'] = 'Confirm your password again';
         } 
+        $options = [ 'cost' => 12,];
+        $password = password_hash($password, PASSWORD_BCRYPT, $options);
 
+    try {
         // Check the database (Check user information)
         $data = $db->prepare( 'SELECT user, email FROM users WHERE user = (:user) OR email = (:email) LIMIT 1;' );
         $data->bindParam( ':user', $username, PDO::PARAM_STR );
@@ -108,48 +115,97 @@ DatabaseConnect();
             $errors['error'] = 'Username or Email Exits';
         }
 
-        
-
         if(! array_filter($errors)){
+            $otp = generateOTP();
+
+            $result = sendOTP($email, $otp);
+
+            $role = 4;
             // Update database
-            $data = $db->prepare( 'INSERT INTO users ( user, name, email, address, password ) VALUES ( :user, :name, :email, :address, :password );' );
+            $data = $db->prepare( 'INSERT INTO users ( user, name, email, token, address, role, password ) VALUES ( :user, :name, :email, :token, :address, :role, :password );' );
             $data->bindParam( ':user', $username, PDO::PARAM_STR );
             $data->bindParam( ':name', $name, PDO::PARAM_STR );
             $data->bindParam( ':email', $email, PDO::PARAM_STR );
+            $data->bindParam( ':token', $otp, PDO::PARAM_STR );
             $data->bindParam( ':address', $address, PDO::PARAM_STR );
+            $data->bindParam( ':role', $role, PDO::PARAM_STR );
             $data->bindParam( ':password', $password, PDO::PARAM_STR );
 
             if ( $data->execute() ) {
-                if ( $data->rowCount() == 1 ) {
+                $result = sendOTP($email, $otp);
+                if ($result === false) {
+                    $errors['error'] =  'Failed to send OTP. ';
+                }
+                if ( $data->rowCount() == 1) {
+
+                    //Get Last ID
+                    $last_id = $db->lastInsertId();
+
+                    // user to role
+                    try {
+                        $data = $db->prepare( 'INSERT INTO system_users_to_roles ( user_id, role_id ) VALUES ( :user_id, :role );' );
+                        $data->bindParam( ':user_id', $last_id, PDO::PARAM_STR );
+                        $data->bindParam( ':role', $role, PDO::PARAM_STR );
+                        $data->execute();
+                    } catch (PDOException $e) {
+                        $errors['error'] = "Error: " . $e->getMessage();
+                    } 
 
                     $db = NULL;
-                    $success['sucess'] = "User Has Been Registed.";
+                    $success['sucess'] = "User Has Been Registed And OTP has been sent to your Email";
 
-                    $table = 'users';
-                    $data = '('. 'user => '. $username . "," .'name => '. $name . ",". 'email => '. $email . ",". 'address => '. $address . ",". 'released => '. $admin_name. ')';
-                    $presant_data = hash('sha256', hash('sha256', $data));
-                    action_logs($table,$_SESSION['user'], "Register User",$presant_data);
+                    // $table = 'users';
+                    // $data = '('. 'user => '. $username . "," .'name => '. $name . ",". 'email => '. $email . ",". 'address => '. $address .')';
+                    // $presant_data = hash('sha256', hash('sha256', $data));
+                    // action_logs($table,$_SESSION['user'], "Register User",$presant_data);
                     sleep(6);
-                    // Redirect('index.php');
+                    Redirect('activate');
                 } else {
 
-                    $table = 'users';
-                    $data = '('. 'user => '. $username . "," .'name => '. $name . ",". 'email => '. $email . ",". 'address => '. $address . ",". 'released => '. $admin_name. ')';
-                    $presant_data = hash('sha256', hash('sha256', $data));
-                    action_logs($table,$_SESSION['user'], "Fail to Register User",$presant_data);
+                    // $table = 'users';
+                    // $data = '('. 'user => '. $username . "," .'name => '. $name . ",". 'email => '. $email . ",". 'address => '. $address . ')';
+                    // $presant_data = hash('sha256', hash('sha256', $data));
+                    // action_logs($table,$_SESSION['user'], "Fail to Register User",$presant_data);
                     $errors['error'] = "Error inserting user.";
                 }
             } else {
 
-                $table = 'users';
-                $data = '('. 'user => '. $username . "," .'name => '. $name . ",". 'email => '. $email . ",". 'address => '. $address . ",". 'released => '. $admin_name. ')';
-                $presant_data = hash('sha256', hash('sha256', $data));
-                action_logs($table,$_SESSION['user'], "Fail to Register User",$presant_data);
+                // $table = 'users';
+                // $data = '('. 'user => '. $username . "," .'name => '. $name . ",". 'email => '. $email . ",". 'address => '. $address .')';
+                // $presant_data = hash('sha256', hash('sha256', $data));
+                // action_logs($table,$_SESSION['user'], "Fail to Register User",$presant_data);
                 $errors['error'] = "Error inserting user.";
             }
         }
-
+    } catch (\Throwable $th) {
+        $errors['error'] = "Error inserting user.";
     }
+    }
+
+    // function isValidPassword($password) {
+    //     // Password length between 8 and 10 characters
+    //     if (strlen($password) < 8 || strlen($password) > 10) {
+    //         return false;
+    //     }
+    
+    //     // Password must contain at least one number
+    //     if (!preg_match('/[0-9]/', $password)) {
+    //         return false;
+    //     }
+    
+    //     // Password must contain at least one uppercase letter
+    //     if (!preg_match('/[A-Z]/', $password)) {
+    //         return false;
+    //     }
+    
+    //     // Password must contain at least one lowercase letter
+    //     if (!preg_match('/[a-z]/', $password)) {
+    //         return false;
+    //     }
+    
+    //     // All requirements met
+    //     return true;
+    // }
 ?>
 
 <!DOCTYPE html>

@@ -71,7 +71,8 @@ if (checkPermissions($_SESSION['user_id'], 2) == "false") {
           // GENERATE PNR NUMBER & INSERT INTO TICKET
           $query1 = "CALL generate_pnr('".$_SESSION['username']."', @p1, '$coach', '$train_number', '$date'); SELECT @p1 AS pnr_no;";
           if($GLOBALS["___conn"]->multi_query($query1) == FALSE){
-            echo $GLOBALS["___conn"]->error;
+            $errors['validate'] = 'Error !';
+            // echo $GLOBALS["___conn"]->error;
           }
           $GLOBALS["___conn"]->next_result();
           $result = $GLOBALS["___conn"]->store_result();      
@@ -82,7 +83,8 @@ if (checkPermissions($_SESSION['user_id'], 2) == "false") {
           for($i=0; $i<$num_passengers; $i++){
             $query1 = "CALL assign_berth('$train_number', '$date', '$coach', '$name[$i]', '$age[$i]', '$gender[$i]', '$pnr_no')";
             if ($GLOBALS["___conn"]->query($query1) === FALSE) {
-              echo $GLOBALS["___conn"]->error;
+              $errors['validate'] = 'Error !';
+              // echo $GLOBALS["___conn"]->error;
             }
           }
 
@@ -112,6 +114,7 @@ if (checkPermissions($_SESSION['user_id'], 2) == "false") {
 <html lang="en">
 <head>
     <title>Enter Details</title>
+    
 </head>
 <?php include WEB_PAGE_TO_ROOT ."template/header-name.php" ?>
 
@@ -130,10 +133,10 @@ if (checkPermissions($_SESSION['user_id'], 2) == "false") {
    <td> Passenger&nbsp<?php echo $i+1 ?>&nbsp&nbsp&nbsp
    </td>
    <td>
-	<input type="text" name="name[]" placeholder="Enter name" class="input" value = "<?php echo $name[$i] ?>">
+	<input type="text" name="name[]" placeholder="Enter name" maxlength="10" size="10" class="input" value = "<?php echo $name[$i] ?>">
 	</td>
 	<td>
-	<input type="number" name="age[]" placeholder="Enter Age" class="input" value = "<?php echo $age[$i] ?>">
+	<input type="number" name="age[]" placeholder="Enter Age" maxlength="3" size="3" class="input" value = "<?php echo $age[$i] ?>">
 	</td>
 	<td>
 	<select name="gender[]" class="input">

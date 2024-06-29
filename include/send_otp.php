@@ -1,4 +1,6 @@
 <?php
+
+
 // Include PHPMailer library files
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -23,22 +25,68 @@ function sendOTP($email, $otp) {
     try {
         // Server settings
         $mail->SMTPDebug = 0;                      // Enable verbose debug output
-        $mail->isSMTP();                           // Send using SMTP
-        $mail->Host       = 'smtp.example.com';    // Set the SMTP server to send through
-        $mail->SMTPAuth   = true;                  // Enable SMTP authentication
-        $mail->Username   = 'your_email@example.com';     // SMTP username
-        $mail->Password   = 'your_email_password';        // SMTP password
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // Enable TLS encryption; `PHPMailer::ENCRYPTION_SMTPS` encouraged
-        $mail->Port       = 587;                    // TCP port to connect to
+        $mail->isSMTP();
+        $mail->Host = 'ssl://smtp.gmail.com';
+        $mail->Port = 465;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        $mail->SMTPAuth = true;
+        $mail->Username = 'deleterali1@gmail.com';
+        $mail->Password = 'ctxpyzandmejyouo';
+        
 
         // Recipients
-        $mail->setFrom('your_email@example.com', 'Your Name');
+        $mail->setFrom('deleterali1@gmail.com', 'eRail');
         $mail->addAddress($email);                 // Add a recipient
 
         // Content
         $mail->isHTML(true);                       // Set email format to HTML
         $mail->Subject = 'Your OTP Code';
-        $mail->Body    = 'Your OTP code is: <b>' . $otp . '</b>';
+        $mail->Body    = '
+         <html>
+        <head>
+            <style>
+                .container {
+                    width: 100%;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    font-family: Arial, sans-serif;
+                    background-color: #f4f4f4;
+                    padding: 20px;
+                    border: 1px solid #ddd;
+                }
+                .header {
+                    background-color: #007bff;
+                    color: #fff;
+                    padding: 10px;
+                    text-align: center;
+                }
+                .content {
+                    padding: 20px;
+                }
+                .footer {
+                    padding: 10px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #777;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>eRail</h2>
+                </div>
+                <div class="content">
+                    <p>Dear User,</p>
+                    <p>Your OTP code is: <strong>' . $otp . '</strong></p>
+                    <p>Please use this code to complete your registration.</p>
+                </div>
+                <div class="footer">
+                    <p>&copy; ' . date("Y") . ' eRail. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>';
         $mail->AltBody = 'Your OTP code is: ' . $otp;
 
         $mail->send();
@@ -48,14 +96,4 @@ function sendOTP($email, $otp) {
     }
 }
 
-// Usage example
-$email = 'recipient@example.com'; // Replace with recipient email
-$otp = generateOTP();
-$result = sendOTP($email, $otp);
-
-if ($result === true) {
-    echo 'OTP has been sent successfully.';
-} else {
-    echo 'Failed to send OTP. Error: ' . $result;
-}
 ?>

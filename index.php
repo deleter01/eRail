@@ -30,7 +30,6 @@ if(isset($_POST['login']) && isset ($_POST['username']) && isset ($_POST['passwo
     $pass = stripslashes( $pass );
     $pass = ((isset($GLOBALS["___conn"]) && is_object($GLOBALS["___conn"])) ? mysqli_real_escape_string($GLOBALS["___conn"],  $pass ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
     // $pass = hash('sha256', $pass);
-    $pass = sha1( $pass );
 
     // Default values
     $id = '';
@@ -62,42 +61,49 @@ if(isset($_POST['login']) && isset ($_POST['username']) && isset ($_POST['passwo
     }
 
     // Check the database (if username matches the password)
-    $data = $db->prepare( 'SELECT * FROM users WHERE user = (:user) AND password = (:password) LIMIT 1;' );
+    $data = $db->prepare( 'SELECT * FROM users WHERE user = (:user) LIMIT 1;' );
     $data->bindParam( ':user', $user, PDO::PARAM_STR);
-    $data->bindParam( ':password', $pass, PDO::PARAM_STR );
+    // $data->bindParam( ':password', $pass, PDO::PARAM_STR );
     $data->execute();
     $row = $data->fetch();
 
     // If its a valid login...
-    if( ( $data->rowCount() == 1 ) && ( $account_locked == false ) ) {
+    if( ( $data->rowCount() == 1 ) && ( $account_locked == false ) && password_verify($pass, $row[ 'password'])) {
       
       $failed_login = $row[ 'failed_login' ];
       $last_login   = $row[ 'last_login' ];
       $user         = $row[ 'user'];
       $role         = $row[ 'role'];
       $id           = $row[ 'id' ];
+      $lock         = $row[ 'enable_account' ];
+
+      if($lock == false){
+        $errors['authenticate'] = "Account is desabled, Verify using OTP ";
+      } else {
 
       // Login successful
-      $_SESSION['username'] = $user;
-      $_SESSION['user'] = $id;
-      $_SESSION['user_id'] = $id;
-      $_SESSION['user_role'] = $role;
-      Login( $user );
-      
-      $table="login";
-      action_logs($table, $id, "success to log in", " - ");
-      $logs = $presant_data;
+      // if(! array_filter($errors)){
+        $_SESSION['username'] = $user;
+        $_SESSION['user'] = $id;
+        $_SESSION['user_id'] = $id;
+        $_SESSION['user_role'] = $role;
+        Login( $user );
+        
+        $table="login";
+        action_logs($table, $id, "success to log in", " - ");
+        $logs = $presant_data;
 
-      // Reset bad login count
-      $data = $db->prepare( 'UPDATE users SET failed_login = "0" WHERE user = (:user) LIMIT 1;' );
-      $data->bindParam( ':user', $user, PDO::PARAM_STR );
-      $data->execute();
+        // Reset bad login count
+        $data = $db->prepare( 'UPDATE users SET failed_login = "0" WHERE user = (:user) LIMIT 1;' );
+        $data->bindParam( ':user', $user, PDO::PARAM_STR );
+        $data->execute();
 
-      if($role === 1){
-        Redirect('admin/index');
-      } else if($role === 2){
-        Redirect('user/');
-      }
+        if($role === 1){
+          Redirect('admin/index');
+        } else if($role === 4){
+          Redirect('user/');
+        }
+     }
     } else {
       // Login failed
       sleep( rand( 2, 4 ) );
@@ -167,7 +173,7 @@ echo "
   </label>
   <p class=\"bg-danger text-white\"> ". htmlspecialchars($errors['authenticate']) . " </p>
   <button type=\"submit\" name=\"login\" value=\"submit\">Sign-In</button>
-  <a href=\"register.php\" class=\"register\">Not A Member? Register</a>
+  <a href=\"register\" class=\"register\">Not A Member? Register</a>
 
   " . tokenField() . "
 
