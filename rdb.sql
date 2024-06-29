@@ -3,11 +3,10 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 05, 2024 at 12:31 AM
+-- Generation Time: Jun 29, 2024 at 02:58 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
-SET FOREIGN_KEY_CHECKS=0;
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
@@ -21,8 +20,6 @@ SET time_zone = "+00:00";
 --
 -- Database: `rdb`
 --
-CREATE DATABASE IF NOT EXISTS `rdb` DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
-USE `rdb`;
 
 DELIMITER $$
 --
@@ -38,24 +35,24 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `assign_berth` (IN `tnum` INT, IN `t
     
      -- update
     IF tcoach like 'ac' THEN
-        UPDATE train_status
+        UPDATE trains_status
         SET seats_b_ac = seats_b_ac + 1
         WHERE t_number = tnum AND t_date = tdate;
     ELSE
-        UPDATE train_status
+        UPDATE trains_status
         SET seats_b_sleeper = seats_b_sleeper + 1
         WHERE t_number = tnum AND t_date = tdate;
     END IF;
     IF tcoach like 'ac' THEN
         SET tseats = 18;
         SELECT seats_b_ac
-        FROM train_status 
+        FROM trains_status 
         WHERE t_number = tnum AND t_date = tdate
         INTO bseats;
     ELSE 
         SET tseats = 24;
         SELECT seats_b_sleeper
-        FROM train_status
+        FROM trains_status
         WHERE t_number = tnum AND t_date = tdate
         INTO bseats;
     END IF;
@@ -71,43 +68,32 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `assign_berth` (IN `tnum` INT, IN `t
 	
     -- berth_type
     IF tcoach like 'ac' THEN
-    	CASE berth_no % 6
-            WHEN 1 THEN
-               SET berth_type = 'LB';
-            WHEN 2 THEN
-               SET berth_type = 'LB';
-            WHEN 3 THEN
-               SET berth_type = 'UB';
-            WHEN 4 THEN
-               SET berth_type = 'UB';
-            WHEN 5 THEN
-               SET berth_type = 'SL';
-            WHEN 0 THEN
-               SET berth_type = 'SU';
-		END CASE;
+        IF berth_no % 6 = 1 OR berth_no % 6 = 2 THEN
+            SET berth_type = 'LB';
+        ELSEIF berth_no % 6 = 3 OR berth_no % 6 = 4 THEN
+            SET berth_type = 'UB';
+        ELSEIF berth_no % 6 = 5 THEN
+            SET berth_type = 'SL';
+        ELSE
+            SET berth_type = 'SU';
+        END IF;
     ELSE
-    	CASE berth_no % 8
-            WHEN 1 THEN
-               SET berth_type = 'LB';
-            WHEN 2 THEN
-               SET berth_type = 'MB';
-            WHEN 3 THEN
-               SET berth_type = 'UB';
-            WHEN 4 THEN
-               SET berth_type = 'LB';
-            WHEN 5 THEN
-               SET berth_type = 'MB';
-            WHEN 6 THEN
-               SET berth_type = 'UB';
-            WHEN 7 THEN
-               SET berth_type = 'SL';
-            WHEN 0 THEN
-               SET berth_type = 'SU';
-		END CASE;
+        IF berth_no % 8 = 1 OR berth_no % 8 = 4 THEN
+            SET berth_type = 'LB';
+        ELSEIF berth_no % 8 = 2 OR berth_no % 8 = 5 THEN
+            SET berth_type = 'MB';
+        ELSEIF berth_no % 8 = 3 OR berth_no % 8 = 6 THEN
+            SET berth_type = 'UB';
+        ELSEIF berth_no % 8 = 7 THEN
+            SET berth_type = 'SL';
+        ELSE
+            SET berth_type = 'SU';
+        END IF;
     END IF;
    
     -- insert
-    INSERT INTO passenger 
+    INSERT INTO passengers 
+    (name, age, gender, pnr_no, berth_no, berth_type, coach_no)
     VALUES(name, age, gender, pnr_no, berth_no, berth_type, coach_no);
     
 END$$
@@ -151,12 +137,12 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `check_seats_availabilty` (IN `tnum`
     DECLARE m2 VARCHAR(128) DEFAULT '';
   
     SELECT num_ac, num_sleeper
-    FROM train
+    FROM trains
     WHERE t_number = tnum AND t_date = tdate
     INTO avail_a, avail_s;
     
     SELECT seats_b_ac, seats_b_sleeper
-    FROM train_status
+    FROM trains_status
     WHERE t_number = tnum AND t_date = tdate
     INTO book_a, book_s;
     
@@ -220,7 +206,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `generate_pnr` (IN `u_name` VARCHAR(
     SET p3 = LPAD(cast(conv(substring(md5(CURRENT_TIMESTAMP()), 1, 16), 16, 10)%10000 as unsigned integer), 4, '0');
     SET pnr_no = RPAD(CONCAT(p1, '-', p2, '-', p3), 12, '0');
  	INSERT INTO ticket
-    VALUES(pnr_no, coach, u_name, CURRENT_TIMESTAMP(), t_number, t_date);
+    VALUES('',pnr_no, coach, u_name, CURRENT_TIMESTAMP(), t_number, t_date);
 END$$
 
 DELIMITER ;
@@ -232,6 +218,7 @@ DELIMITER ;
 --
 
 CREATE TABLE `passenger` (
+  `id` int(11) NOT NULL,
   `name` varchar(50) NOT NULL,
   `age` int(11) NOT NULL,
   `gender` varchar(50) NOT NULL,
@@ -241,20 +228,274 @@ CREATE TABLE `passenger` (
   `coach_no` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- RELATIONSHIPS FOR TABLE `passenger`:
---   `pnr_no`
---       `ticket` -> `pnr_no`
---
+-- --------------------------------------------------------
 
 --
--- Dumping data for table `passenger`
+-- Table structure for table `passengers`
 --
 
-INSERT INTO `passenger` (`name`, `age`, `gender`, `pnr_no`, `berth_no`, `berth_type`, `coach_no`) VALUES
-('ss', 23, 'Female', '504-560-1200', 9, 'UB', 2),
-('ali', 43, 'Male', '504-889-3520', 10, 'UB', 2),
-('mahoo', 35, 'Female', '504-889-3520', 11, 'SL', 2);
+CREATE TABLE `passengers` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `age` int(11) NOT NULL,
+  `gender` varchar(100) NOT NULL,
+  `berth_type` varchar(100) NOT NULL,
+  `berth_no` int(11) DEFAULT NULL,
+  `coach_no` int(11) DEFAULT NULL,
+  `pnr_no` varchar(12) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `passengers`
+--
+
+INSERT INTO `passengers` (`id`, `name`, `age`, `gender`, `berth_type`, `berth_no`, `coach_no`, `pnr_no`) VALUES
+(1, 'de', 12, 'Female', '864-873-1648', 2, 0, '1'),
+(2, 'de', 21, 'Male', '864', 3, 0, '1'),
+(3, 'qwe', 21, 'Female', 'SU', NULL, NULL, '864'),
+(4, 'siamoo', 19, 'Female', 'SU', NULL, NULL, '864'),
+(5, 'qqww', 12, 'Female', 'SU', NULL, NULL, '864-895-9648'),
+(6, 'jamal', 21, 'Male', 'SU', NULL, NULL, '288-949-7376'),
+(7, 'jamal', 21, 'Male', 'SU', NULL, NULL, '288-763-4048'),
+(8, 'jamal', 21, 'Male', 'SU', NULL, NULL, '288-609-7520'),
+(9, 'jamal', 21, 'Male', 'SU', NULL, NULL, '288-209-6928'),
+(10, 'jamal', 21, 'Male', 'SU', NULL, NULL, '288-582-6928'),
+(11, 'jamal', 21, 'Male', 'SU', NULL, NULL, '288-462-8960'),
+(12, 'jamal', 21, 'Male', 'SU', NULL, NULL, '288-931-8960'),
+(13, 'jamal', 21, 'Male', 'SU', NULL, NULL, '288-721-1920'),
+(14, 'dfjl', 23, 'Female', 'SU', NULL, NULL, '888-443-8336'),
+(15, 'Kevin is a regular c', 2, 'Female', 'LB', 1, 1, '888-575-6672'),
+(16, 'jhjkhhhhhh', 22, 'Female', 'LB', 2, 1, '888-548-3344');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `roles`
+--
+
+CREATE TABLE `roles` (
+  `role_id` bigint(20) NOT NULL,
+  `role_name` varchar(50) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `roles`
+--
+
+INSERT INTO `roles` (`role_id`, `role_name`) VALUES
+(1, 'LEVEL 1 ADMIN'),
+(2, 'RAIL MANAGER'),
+(3, 'RAIL STAFF'),
+(4, 'RAIL USERS');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `site_activity`
+--
+
+CREATE TABLE `site_activity` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `table_name` text NOT NULL,
+  `action_type` text NOT NULL,
+  `table_id` text NOT NULL,
+  `ip` text DEFAULT NULL,
+  `browser` text DEFAULT NULL,
+  `previous_data` text DEFAULT NULL,
+  `present_data` text DEFAULT NULL,
+  `login` int(11) DEFAULT 0,
+  `date` datetime NOT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `site_activity`
+--
+
+INSERT INTO `site_activity` (`id`, `user_id`, `table_name`, `action_type`, `table_id`, `ip`, `browser`, `previous_data`, `present_data`, `login`, `date`) VALUES
+(74, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '43528705964055fc6c8ca0f996b60c02c77f043ce44142d6625e295876a22570', 1, '2024-06-21 21:03:24'),
+(73, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '43528705964055fc6c8ca0f996b60c02c77f043ce44142d6625e295876a22570', 1, '2024-06-21 21:02:41'),
+(72, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '43528705964055fc6c8ca0f996b60c02c77f043ce44142d6625e295876a22570', 1, '2024-06-21 21:00:15'),
+(71, 1, 'users', 'Register User', '1', '::1', 'Google Chrome', '', 'f780db569e195339b4f8a9484fc4c44ada8a35b2ff7386d40c7051abfedf581d', 0, '2024-06-21 20:56:39'),
+(70, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'f24d6ba35411b672f7e359358a4c6909a72d20432a2802bf46d556e8e13474fa', 1, '2024-06-21 20:39:57'),
+(69, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'cfc95764c4303698dcf9eb6645ee3cb917ba3fed0322b1f11610405d23538649', 1, '2024-06-21 20:27:22'),
+(68, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '37d11af4154c4a807f885ff5e7b1e82bf1cd7017626f626b170ce9e80798db55', 1, '2024-06-21 18:13:27'),
+(67, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '84a8069706d116a65d2ff0e535514e443ebfdd06dd0bbd82a631589065c7c464', 1, '2024-06-21 18:13:07'),
+(66, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '84a8069706d116a65d2ff0e535514e443ebfdd06dd0bbd82a631589065c7c464', 1, '2024-06-21 18:13:00'),
+(65, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '909666e18597b39901935f20585a8c384810cc68113892c5feb9e4d2cd68f31a', 1, '2024-06-21 18:12:52'),
+(64, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '1de8e78210f5f944f6f4838e692c48bd7d3e51fa10d8ea572280677fb5cfd5a1', 1, '2024-06-21 18:12:42'),
+(63, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '091cb0816a1abcb45d83a77e6c1f4c30cf0a5a3f82b88eca8fa278aa0a03d6bb', 1, '2024-06-21 18:10:44'),
+(62, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '313ae9e0999202dc5588882ca9e71dd0796c6d22f46f48f87a964d2b79be73d2', 1, '2024-06-21 18:09:25'),
+(61, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'd1c1392d189e82ae995dc44a61696276296e1c5de31fb20cd228b098acbe1638', 1, '2024-06-21 17:42:06'),
+(60, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '35ddecfc89db2ded4031bfc7b54453fb2757cc21d04de3654acf7e69bba918a6', 1, '2024-06-21 17:41:07'),
+(59, 1, 'trains', 'Release a Train', '1', '::1', 'Google Chrome', '', '(train_number => 114,date => 2024-06-24,num_ac => 10)', 0, '2024-06-21 17:20:00'),
+(58, 1, 'trains', 'Fail to log in', '1', '::1', 'Google Chrome', '', 'f5d90bcbb1a54d2abdc232eae0a50ae8262f29737b9d90607eadc71280b6f0da', 0, '2024-06-21 17:18:35'),
+(75, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'd1c1392d189e82ae995dc44a61696276296e1c5de31fb20cd228b098acbe1638', 1, '2024-06-21 21:03:32'),
+(76, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '1d1c32217cf1409b08a332e625885422e64e2de6da1890f46a05794e60208b35', 1, '2024-06-21 21:04:29'),
+(77, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '3c90e9b4c42973372adeadf20d67b086d8ca9027a1abf944114182d61ab1041a', 1, '2024-06-21 21:07:14'),
+(78, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 12:11:12'),
+(79, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 13:37:37'),
+(80, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 13:42:16'),
+(81, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 13:44:15'),
+(82, 1, 'login', 'success to log in', '1', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 13:52:24'),
+(83, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 14:01:04'),
+(84, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 14:08:20'),
+(85, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 14:15:40'),
+(86, 1, 'login', 'success to log in', '1', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 14:16:59'),
+(87, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 14:24:45'),
+(88, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 14:28:48'),
+(89, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 14:34:35'),
+(90, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 15:39:43'),
+(91, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 15:40:04'),
+(92, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 16:30:29'),
+(93, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 16:45:59'),
+(94, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 16:50:33'),
+(95, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 16:52:08'),
+(96, 1, 'login', 'success to log in', '1', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 17:10:04'),
+(97, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-27 17:30:16'),
+(98, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '9e5891bf14e35a6beb0b41bc34938a6f63c96f4388ca75aa7e55e8f56cd2cffc', 1, '2024-06-27 17:39:31'),
+(99, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'e5770c6fc7545c4bbe185b324627d6112ef95bf6cdbf02d6ee3b66680d1db8a3', 1, '2024-06-27 17:39:42'),
+(100, 4, 'users', 'Register User', '4', '::1', 'Google Chrome', '', '3353dd5b28783b37b4d900a8cc39d0df62d35143cdd70697c0cd0fbedd05a89c', 0, '2024-06-27 17:59:50'),
+(101, 4, 'users', 'Register User', '4', '::1', 'Google Chrome', '', 'fe0b46658a88fff27b53d26e1e0fcb3ccc8607909e598fa06c75d248a8311cec', 0, '2024-06-28 06:14:43'),
+(102, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-28 07:48:08'),
+(103, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-28 07:50:19'),
+(104, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-28 07:53:55'),
+(105, 4, 'users', 'Fail to Register User', '4', '::1', 'Google Chrome', '', '2e7c7029ccdc0ca44da98e79a6e609245c2e667cc46e211a81890923bf259a43', 0, '2024-06-28 09:27:58'),
+(106, 4, 'users', 'Register User', '4', '::1', 'Google Chrome', '', '2e7c7029ccdc0ca44da98e79a6e609245c2e667cc46e211a81890923bf259a43', 0, '2024-06-28 09:55:58'),
+(107, 4, 'users', 'Register User', '4', '::1', 'Google Chrome', '', '2e7c7029ccdc0ca44da98e79a6e609245c2e667cc46e211a81890923bf259a43', 0, '2024-06-28 10:07:31'),
+(108, 4, 'users', 'Register User', '4', '::1', 'Google Chrome', '', '8797a53a67fc6e2ab036bfd01da26b6230de8efb1bcfeae1ed7c3250736e428c', 0, '2024-06-28 11:08:14'),
+(109, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'd78e1a0dc878d53410e951986d79043e8bb1c6021b31d95256927061981eeb05', 1, '2024-06-28 11:09:17'),
+(110, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'd78e1a0dc878d53410e951986d79043e8bb1c6021b31d95256927061981eeb05', 1, '2024-06-28 11:12:23'),
+(111, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'd78e1a0dc878d53410e951986d79043e8bb1c6021b31d95256927061981eeb05', 1, '2024-06-28 11:14:57'),
+(112, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '0e1807b74315ace572dec554e58d6a85b85edf435a794f998f82952222c42d89', 1, '2024-06-28 21:49:04'),
+(113, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'dae1b2acb47f5d7c417168eb02c4cf19f2c8f2533d377c7253b5386b3e912da2', 1, '2024-06-28 22:15:08'),
+(114, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'c75e955414d4493351564700da800a6c9f29e8e2b87bddf1e968a01a4abec5c3', 1, '2024-06-28 22:25:41'),
+(115, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'c75e955414d4493351564700da800a6c9f29e8e2b87bddf1e968a01a4abec5c3', 1, '2024-06-28 22:25:53'),
+(116, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'd78e1a0dc878d53410e951986d79043e8bb1c6021b31d95256927061981eeb05', 1, '2024-06-28 22:26:37'),
+(117, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '4a2f698efbc0224c2a996d0727e715807ccee5f6d230db19fab6ed5990d09e5c', 1, '2024-06-28 22:26:57'),
+(118, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'b3fde356ad9a4a376cadc27101da1b34484c68548830864aeb9aca634cde2470', 1, '2024-06-28 22:39:21'),
+(119, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '796c0bb8f50ce26e7724e48c225d7b881b8231a8774147b7d7128aa204fb5126', 1, '2024-06-28 22:42:00'),
+(120, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '3d60cc7f006ea8108080288ec2b5144cb54681d169df60929bc7425c86d3b397', 1, '2024-06-28 22:42:35'),
+(121, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '48a3e88006afa37ba2e3d77932bbc8379344e8c138f610966e8a40c2337485f6', 1, '2024-06-28 22:45:04'),
+(122, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'dd8f20ec14b0222076944afe3a75a2d661ddfbdf3f61f258b60d34470514159a', 1, '2024-06-28 22:45:27'),
+(123, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'f8914931b0f8177f66371afe5cd593ce5ccb1ef0bf782eb98075f9751dafc9a4', 1, '2024-06-28 22:51:25'),
+(124, 24, 'login', 'success to log in', '24', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-28 22:52:12'),
+(125, 24, 'login', 'success to log in', '24', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-28 22:52:23'),
+(126, 24, 'login', 'success to log in', '24', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-28 22:52:49'),
+(127, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '5add6000a0a1985968664e1a077c84d68b13aa10dc52a95e496a6037060d3e44', 1, '2024-06-28 22:53:01'),
+(128, 24, 'login', 'success to log in', '24', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-28 22:53:12'),
+(129, 24, 'login', 'success to log in', '24', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-28 22:54:22'),
+(130, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', 'cd1ae05f5e965f441b63119413ad562eaeb60dfbc6938c15ecb990d66b89cc1d', 1, '2024-06-29 00:50:08'),
+(131, 24, 'login', 'success to log in', '24', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 00:50:24'),
+(132, 25, 'login', 'success to Activate Account', '25', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 01:41:34'),
+(133, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '2c145ce16a5e1669c1958b6dde6f6c3fb2afcf0288d81223d7e53ca6c1e26d55', 1, '2024-06-29 01:42:21'),
+(134, 25, 'login', 'success to log in', '25', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 01:42:36'),
+(135, 25, 'login', 'success to Activate Account', '25', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 01:43:58'),
+(136, 25, 'login', 'success to Activate Account', '25', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 01:44:33'),
+(137, 0, 'login', 'Fail to Activate Account', '', '::1', 'Google Chrome', '', 'dfaa90b9f1d0497f2836e7a73b6e332125ba378ff023382491970708da76b0d5', 1, '2024-06-29 01:45:03'),
+(138, 25, 'login', 'success to Activate Account', '25', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 01:45:14'),
+(139, 25, 'login', 'success to Activate Account', '25', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 01:46:24'),
+(140, 25, 'login', 'success to Activate Account', '25', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 01:47:17'),
+(141, 25, 'login', 'success to Activate Account', '25', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 01:52:25'),
+(142, 25, 'login', 'success to log in', '25', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 01:53:10'),
+(143, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '5e40e040b26f24605358db468d308875cd515738ce7d7bf52a2671cadd897550', 1, '2024-06-29 01:54:28'),
+(144, 27, 'login', 'success to log in', '27', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:16:45'),
+(145, 27, 'login', 'success to log in', '27', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:17:36'),
+(146, 27, 'login', 'success to log in', '27', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:20:57'),
+(147, 27, 'login', 'success to log in', '27', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:21:29'),
+(148, 27, 'login', 'success to log in', '27', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:22:15'),
+(149, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '00b5bd6980687bfd90bb37100bf96455fbc2d4c79c6bcd0ba22ead9815fc1e8f', 1, '2024-06-29 13:26:25'),
+(150, 26, 'login', 'success to log in', '26', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:27:23'),
+(151, 26, 'login', 'success to Activate Account', '26', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:29:36'),
+(152, 26, 'login', 'success to log in', '26', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:31:34'),
+(153, 1, 'login', 'success to log in', '1', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:32:53'),
+(154, 1, 'trains', 'Release a Train', '1', '::1', 'Google Chrome', '', '(train_number => 225,date => 2024-06-30,num_ac => 20,num_sleeper => 25,released => admin)', 0, '2024-06-29 13:33:33'),
+(155, 1, 'trains_status', 'Train Status', '1', '::1', 'Google Chrome', '', '(train_number => 225,date => 2024-06-30)', 0, '2024-06-29 13:33:33'),
+(156, 26, 'login', 'success to log in', '26', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:40:50'),
+(157, 0, 'login', 'Fail to Activate Account', '', '::1', 'Google Chrome', '', 'dfaa90b9f1d0497f2836e7a73b6e332125ba378ff023382491970708da76b0d5', 1, '2024-06-29 13:52:18'),
+(158, 28, 'login', 'success to Activate Account', '28', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:52:58'),
+(159, 28, 'login', 'success to Activate Account', '28', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 13:53:48'),
+(160, 26, 'login', 'success to log in', '26', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 14:02:02'),
+(161, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '20f52a4ad037dbed4aea2f506030b3537582d5731cb421f242d16bed34112bce', 1, '2024-06-29 14:21:44'),
+(162, 1, 'login', 'success to log in', '1', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 14:21:57'),
+(163, 0, 'login', 'Fail to log in', '', '::1', 'Google Chrome', '', '20f52a4ad037dbed4aea2f506030b3537582d5731cb421f242d16bed34112bce', 1, '2024-06-29 14:43:08'),
+(164, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 14:43:37'),
+(165, 4, 'login', 'success to log in', '4', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 14:44:08'),
+(166, 1, 'login', 'success to log in', '1', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 14:44:34'),
+(167, 29, 'login', 'success to Activate Account', '29', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 14:48:33'),
+(168, 29, 'login', 'success to log in', '29', '::1', 'Google Chrome', '', ' - ', 1, '2024-06-29 14:48:57');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `system_permissions`
+--
+
+CREATE TABLE `system_permissions` (
+  `permission_id` bigint(20) NOT NULL,
+  `permission_name` varchar(50) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `system_permissions`
+--
+
+INSERT INTO `system_permissions` (`permission_id`, `permission_name`) VALUES
+(1, 'ADMIN_LOGIN'),
+(2, 'USER_LOGIN'),
+(3, 'BOOK TICKET');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `system_permission_to_roles`
+--
+
+CREATE TABLE `system_permission_to_roles` (
+  `ref_id` bigint(20) NOT NULL,
+  `role_id` bigint(20) DEFAULT NULL,
+  `permission_id` bigint(20) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `system_permission_to_roles`
+--
+
+INSERT INTO `system_permission_to_roles` (`ref_id`, `role_id`, `permission_id`) VALUES
+(1, 1, 1),
+(2, 1, 2),
+(3, 1, 3),
+(4, 1, 4),
+(5, 4, 2),
+(6, 4, 3);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `system_users_to_roles`
+--
+
+CREATE TABLE `system_users_to_roles` (
+  `ref_id` bigint(20) NOT NULL,
+  `user_id` bigint(20) DEFAULT NULL,
+  `role_id` bigint(20) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `system_users_to_roles`
+--
+
+INSERT INTO `system_users_to_roles` (`ref_id`, `user_id`, `role_id`) VALUES
+(1, 1, 1),
+(2, 4, 4),
+(4, 22, 4),
+(5, 23, 4),
+(6, 24, 4),
+(7, 25, 4),
+(8, 26, 4),
+(9, 27, 4),
+(10, 28, 4),
+(11, 29, 4);
 
 -- --------------------------------------------------------
 
@@ -263,6 +504,7 @@ INSERT INTO `passenger` (`name`, `age`, `gender`, `pnr_no`, `berth_no`, `berth_t
 --
 
 CREATE TABLE `ticket` (
+  `id` int(11) NOT NULL,
   `pnr_no` varchar(12) NOT NULL,
   `coach` varchar(50) NOT NULL,
   `booked_by` varchar(50) NOT NULL,
@@ -272,135 +514,86 @@ CREATE TABLE `ticket` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- RELATIONSHIPS FOR TABLE `ticket`:
---
-
---
 -- Dumping data for table `ticket`
 --
 
-INSERT INTO `ticket` (`pnr_no`, `coach`, `booked_by`, `booked_at`, `t_number`, `t_date`) VALUES
-('504-115-6336', 'ac', 'jode', '2024-06-04 22:10:34', 1, '2024-06-23'),
-('504-169-8592', 'ac', 'jode', '2024-06-04 22:10:31', 1, '2024-06-23'),
-('504-257-6304', 'ac', 'jode', '2024-06-04 22:14:19', 1, '2024-06-23'),
-('504-267-5504', 'ac', 'jode', '2024-06-04 22:10:40', 1, '2024-06-23'),
-('504-293-3568', 'ac', 'jode', '2024-06-04 22:10:32', 1, '2024-06-23'),
-('504-350-4496', 'ac', 'jode', '2024-06-04 22:10:35', 1, '2024-06-23'),
-('504-437-6608', 'ac', 'jode', '2024-06-04 22:10:33', 1, '2024-06-23'),
-('504-446-5360', 'ac', 'jode', '2024-06-04 22:10:29', 1, '2024-06-23'),
-('504-454-6464', 'ac', 'jode', '2024-06-04 22:10:38', 1, '2024-06-23'),
-('504-492-6880', 'ac', 'jode', '2024-06-04 22:10:39', 1, '2024-06-23'),
-('504-560-1200', 'ac', 'jode', '2024-06-04 22:19:54', 1, '2024-06-23'),
-('504-562-3408', 'ac', 'jode', '2024-06-04 22:19:05', 1, '2024-06-23'),
-('504-618-8592', 'ac', 'jode', '2024-06-04 22:10:31', 1, '2024-06-23'),
-('504-678-8160', 'ac', 'jode', '2024-06-04 22:10:26', 1, '2024-06-23'),
-('504-693-1456', 'ac', 'jode', '2024-06-04 22:10:36', 1, '2024-06-23'),
-('504-706-9504', 'ac', 'jode', '2024-06-04 22:10:30', 1, '2024-06-23'),
-('504-736-8256', 'ac', 'jode', '2024-06-04 22:19:07', 1, '2024-06-23'),
-('504-793-3920', 'ac', 'jode', '2024-06-04 22:10:24', 1, '2024-06-23'),
-('504-826-3744', 'ac', 'jode', '2024-06-04 20:57:19', 1, '2024-06-23'),
-('504-830-3632', 'ac', 'jode', '2024-06-04 20:56:00', 1, '2024-06-23'),
-('504-878-8688', 'ac', 'jode', '2024-06-04 22:10:37', 1, '2024-06-23'),
-('504-889-3520', 'ac', 'jode', '2024-06-04 22:22:00', 1, '2024-06-23'),
-('504-910-2528', 'ac', 'jode', '2024-06-04 22:10:28', 1, '2024-06-23'),
-('504-923-9312', 'ac', 'jode', '2024-06-04 22:09:50', 1, '2024-06-23'),
-('504-924-9008', 'ac', 'jode', '2024-06-04 22:19:00', 1, '2024-06-23'),
-('504-958-1456', 'ac', 'jode', '2024-06-04 22:10:36', 1, '2024-06-23'),
-('504-965-1280', 'ac', 'jode', '2024-06-04 22:10:27', 1, '2024-06-23');
+INSERT INTO `ticket` (`id`, `pnr_no`, `coach`, `booked_by`, `booked_at`, `t_number`, `t_date`) VALUES
+(1, '864-651-7104', 'ac', 'dele', '2024-06-19 01:01:50', 223, '2024-06-23'),
+(2, '864-559-7168', 'ac', 'dele', '2024-06-19 01:09:42', 223, '2024-06-23'),
+(3, '864-873-1648', 'ac', 'dele', '2024-06-19 01:10:48', 223, '2024-06-23'),
+(4, '864-738-5120', 'sleeper', 'dele', '2024-06-19 01:12:12', 223, '2024-06-22'),
+(5, '864-573-7360', 'sleeper', 'dele', '2024-06-19 01:24:52', 223, '2024-06-22'),
+(7, '864-556-2896', 'ac', 'dele', '2024-06-20 08:32:41', 223, '2024-06-23'),
+(8, '864-986-8368', 'sleeper', 'dele', '2024-06-20 08:42:13', 221, '2024-06-23'),
+(9, '864-953-2272', 'sleeper', 'dele', '2024-06-20 08:44:03', 221, '2024-06-23'),
+(10, '864-114-6128', 'sleeper', 'dele', '2024-06-20 08:44:51', 221, '2024-06-23'),
+(11, '864-789-6144', 'ac', 'dele', '2024-06-20 08:58:14', 223, '2024-06-22'),
+(12, '864-255-4576', 'ac', 'dele', '2024-06-20 09:07:38', 223, '2024-06-22'),
+(13, '864-917-9024', 'ac', 'dele', '2024-06-20 09:10:49', 223, '2024-06-22'),
+(14, '864-895-9648', 'ac', 'dele', '2024-06-20 09:12:16', 223, '2024-06-22'),
+(15, '288-949-7376', 'sleeper', 'jamal', '2024-06-20 09:21:16', 221, '2024-06-23'),
+(16, '288-763-4048', 'sleeper', 'jamal', '2024-06-20 09:21:20', 221, '2024-06-23'),
+(17, '288-609-7520', 'sleeper', 'jamal', '2024-06-20 09:21:21', 221, '2024-06-23'),
+(18, '288-209-6928', 'sleeper', 'jamal', '2024-06-20 09:21:22', 221, '2024-06-23'),
+(19, '288-582-6928', 'sleeper', 'jamal', '2024-06-20 09:21:22', 221, '2024-06-23'),
+(20, '288-462-8960', 'sleeper', 'jamal', '2024-06-20 09:21:23', 221, '2024-06-23'),
+(21, '288-931-8960', 'sleeper', 'jamal', '2024-06-20 09:21:23', 221, '2024-06-23'),
+(22, '288-721-1920', 'sleeper', 'jamal', '2024-06-20 09:22:26', 221, '2024-06-23'),
+(23, '888-443-8336', 'ac', 'jose', '2024-06-29 11:27:49', 221, '2024-06-23'),
+(24, '888-575-6672', 'ac', 'jose', '2024-06-29 11:42:31', 225, '2024-06-30'),
+(25, '888-548-3344', 'ac', 'jose', '2024-06-29 12:02:33', 225, '2024-06-30');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `train`
+-- Table structure for table `trains`
 --
 
-CREATE TABLE `train` (
-  `t_number` int(11) NOT NULL,
-  `t_date` date NOT NULL,
+CREATE TABLE `trains` (
+  `id` int(11) NOT NULL,
   `num_ac` int(11) NOT NULL,
   `num_sleeper` int(11) NOT NULL,
-  `released_by` varchar(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `released_by` varchar(100) NOT NULL,
+  `t_date` date NOT NULL,
+  `t_number` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
--- RELATIONSHIPS FOR TABLE `train`:
+-- Dumping data for table `trains`
 --
 
---
--- Dumping data for table `train`
---
-
-INSERT INTO `train` (`t_number`, `t_date`, `num_ac`, `num_sleeper`, `released_by`) VALUES
-(1, '2024-06-23', 10, 10, ''),
-(23, '2024-06-08', 23, 23, 'admin'),
-(124, '2024-06-06', 12, 12, 'admin'),
-(234, '2024-06-07', 12, 12, 'admin'),
-(234, '2024-06-08', 23, 23, 'admin'),
-(243, '2024-06-07', 20, 20, 'admin'),
-(453, '2024-06-08', 12, 12, 'admin'),
-(777, '2024-07-05', 5, 5, 'admin'),
-(1122, '2024-07-01', 10, 10, '');
+INSERT INTO `trains` (`id`, `num_ac`, `num_sleeper`, `released_by`, `t_date`, `t_number`) VALUES
+(1, 20, 20, 'admin', '2024-06-22', 223),
+(2, 20, 20, 'admin', '2024-06-23', 221),
+(3, 20, 20, 'admin', '2024-06-23', 223),
+(4, 10, 10, 'admin', '2024-06-24', 112),
+(5, 10, 10, 'admin', '2024-06-24', 113),
+(6, 10, 10, 'admin', '2024-06-24', 114),
+(7, 20, 25, 'admin', '2024-06-30', 225);
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `train_status`
+-- Table structure for table `trains_status`
 --
 
-CREATE TABLE `train_status` (
-  `t_number` int(11) NOT NULL,
-  `t_date` date NOT NULL,
+CREATE TABLE `trains_status` (
+  `id` int(11) NOT NULL,
   `seats_b_ac` int(11) NOT NULL,
-  `seats_b_sleeper` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `seats_b_sleeper` int(11) NOT NULL,
+  `t_date` date NOT NULL,
+  `t_number` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
--- RELATIONSHIPS FOR TABLE `train_status`:
---   `t_number`
---       `train` -> `t_number`
---   `t_date`
---       `train` -> `t_date`
+-- Dumping data for table `trains_status`
 --
 
---
--- Dumping data for table `train_status`
---
-
-INSERT INTO `train_status` (`t_number`, `t_date`, `seats_b_ac`, `seats_b_sleeper`) VALUES
-(1, '2024-06-23', 29, 0),
-(234, '2024-06-07', 0, 0),
-(243, '2024-06-07', 0, 0),
-(453, '2024-06-08', 0, 0),
-(1122, '2024-07-01', 2, 0);
-
---
--- Triggers `train_status`
---
-DELIMITER $$
-CREATE TRIGGER `check_booked_seats` BEFORE UPDATE ON `train_status` FOR EACH ROW BEGIN
-	DECLARE msg varchar(255) DEFAULT '';
-    DECLARE avail_a INT;
-    DECLARE avail_s INT;
-    
-    SELECT num_ac, num_sleeper
-    FROM train
-    WHERE t_number = OLD.t_number AND t_date = OLD.t_date
-    INTO avail_a, avail_s;
-    
-	IF NEW.seats_b_ac > avail_a*18 THEN
-    	SET msg = CONCAT(msg, ' Sufficient Seats are not available in AC Coach of Train no ', NEW.t_number, ' Dated ', NEW.t_date);
-    END IF;
-    IF NEW.seats_b_sleeper > avail_s*24 THEN
-    	SET msg = CONCAT(msg, ' Sufficient Seats are not available in Sleeper Coach of Train no ', NEW.t_number, ' Dated ', NEW.t_date);
-    END IF;
-
-    IF msg != '' THEN
-    	SIGNAL SQLSTATE '45000' 
-    	SET MESSAGE_TEXT = msg;
-    END IF;
-END
-$$
-DELIMITER ;
+INSERT INTO `trains_status` (`id`, `seats_b_ac`, `seats_b_sleeper`, `t_date`, `t_number`) VALUES
+(1, 3, 0, '2024-06-23', 223),
+(2, 0, 0, '2024-06-24', 113),
+(3, 0, 0, '2024-06-24', 114),
+(4, 2, 0, '2024-06-30', 225);
 
 -- --------------------------------------------------------
 
@@ -415,57 +608,79 @@ CREATE TABLE `users` (
   `email` varchar(50) NOT NULL,
   `address` varchar(128) NOT NULL,
   `role` tinyint(1) NOT NULL DEFAULT 0,
-  `password` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
   `token` text NOT NULL,
+  `enable_account` tinyint(1) NOT NULL DEFAULT 0,
   `last_login` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `failed_login` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- RELATIONSHIPS FOR TABLE `users`:
---
-
---
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `user`, `name`, `email`, `address`, `role`, `password`, `token`, `last_login`, `failed_login`) VALUES
-(1, 'admin', 'admin', 'admin@gmail.com', 'Dodoma', 1, '40bd001563085fc35165329ea1ff5c5ecbdbbeef', '', '2024-06-04 22:29:03', 0),
-(2, 'deleter', 'deleter', 'deleter@gmail.com', 'Dodoma', 1, '40bd001563085fc35165329ea1ff5c5ecbdbbeef', '', '2024-06-04 22:26:34', 0),
-(3, 'jj', 'ss', 'jadizo@gmail.com', 'ss', 0, '7c222fb2927d828af22f592134e8932480637c0d', '', '2024-06-04 04:47:54', 0),
-(4, 'dele', 'Ismail Haji', 'dele@gmail.com', 'Dodoma', 0, '40bd001563085fc35165329ea1ff5c5ecbdbbeef', '', '2024-06-04 12:32:29', 0),
-(5, 'jode', 'jadi', 'jose@gmail.com', 'hh', 0, '40bd001563085fc35165329ea1ff5c5ecbdbbeef', '', '2024-06-04 22:09:05', 0);
+INSERT INTO `users` (`id`, `user`, `name`, `email`, `address`, `role`, `password`, `token`, `enable_account`, `last_login`, `failed_login`) VALUES
+(1, 'admin', 'admin', 'admin@gmail.com', 'Dodoma', 1, '$2y$12$jivZFAyTRvfU/Ta9atQZjOcddXFfIcuDm8WJeXl2i5/6s/RHrgWBi', '', 1, '2024-06-29 11:32:53', 0),
+(4, 'dele', 'Ismail Haji', 'dele@gmail.com', 'Dodoma', 2, '$2y$12$jivZFAyTRvfU/Ta9atQZjOcddXFfIcuDm8WJeXl2i5/6s/RHrgWBi', '', 1, '2024-06-29 12:44:08', 0),
+(29, 'ismail', 'Ismail Haji', 'ismailalihaji01@gmail.com', 'Dodoma', 4, '$2y$12$eI70mHmZjggsfdK.fg1KHO1wJUdRf5qkn9KcIGhqw0TeQwS/ACdyG', '487247', 1, '2024-06-29 12:48:37', 0);
 
 --
 -- Indexes for dumped tables
 --
 
 --
--- Indexes for table `passenger`
+-- Indexes for table `passengers`
 --
-ALTER TABLE `passenger`
-  ADD PRIMARY KEY (`pnr_no`,`berth_no`,`coach_no`);
+ALTER TABLE `passengers`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `roles`
+--
+ALTER TABLE `roles`
+  ADD PRIMARY KEY (`role_id`);
+
+--
+-- Indexes for table `site_activity`
+--
+ALTER TABLE `site_activity`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `system_permissions`
+--
+ALTER TABLE `system_permissions`
+  ADD PRIMARY KEY (`permission_id`);
+
+--
+-- Indexes for table `system_permission_to_roles`
+--
+ALTER TABLE `system_permission_to_roles`
+  ADD PRIMARY KEY (`ref_id`);
+
+--
+-- Indexes for table `system_users_to_roles`
+--
+ALTER TABLE `system_users_to_roles`
+  ADD PRIMARY KEY (`ref_id`);
 
 --
 -- Indexes for table `ticket`
 --
 ALTER TABLE `ticket`
-  ADD PRIMARY KEY (`pnr_no`),
-  ADD KEY `t_number` (`t_number`,`t_date`);
+  ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `train`
+-- Indexes for table `trains`
 --
-ALTER TABLE `train`
-  ADD PRIMARY KEY (`t_number`,`t_date`);
+ALTER TABLE `trains`
+  ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `train_status`
+-- Indexes for table `trains_status`
 --
-ALTER TABLE `train_status`
-  ADD PRIMARY KEY (`t_number`,`t_date`),
-  ADD KEY `t_date` (`t_date`),
-  ADD KEY `t_number` (`t_number`) USING BTREE;
+ALTER TABLE `trains_status`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `users`
@@ -478,27 +693,64 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `passengers`
+--
+ALTER TABLE `passengers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+
+--
+-- AUTO_INCREMENT for table `roles`
+--
+ALTER TABLE `roles`
+  MODIFY `role_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `site_activity`
+--
+ALTER TABLE `site_activity`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=169;
+
+--
+-- AUTO_INCREMENT for table `system_permissions`
+--
+ALTER TABLE `system_permissions`
+  MODIFY `permission_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `system_permission_to_roles`
+--
+ALTER TABLE `system_permission_to_roles`
+  MODIFY `ref_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `system_users_to_roles`
+--
+ALTER TABLE `system_users_to_roles`
+  MODIFY `ref_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+
+--
+-- AUTO_INCREMENT for table `ticket`
+--
+ALTER TABLE `ticket`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+
+--
+-- AUTO_INCREMENT for table `trains`
+--
+ALTER TABLE `trains`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `trains_status`
+--
+ALTER TABLE `trains_status`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
---
--- Constraints for dumped tables
---
-
---
--- Constraints for table `passenger`
---
-ALTER TABLE `passenger`
-  ADD CONSTRAINT `passenger_ibfk_1` FOREIGN KEY (`pnr_no`) REFERENCES `ticket` (`pnr_no`);
-
---
--- Constraints for table `train_status`
---
-ALTER TABLE `train_status`
-  ADD CONSTRAINT `train_status_ibfk_1` FOREIGN KEY (`t_number`,`t_date`) REFERENCES `train` (`t_number`, `t_date`);
-SET FOREIGN_KEY_CHECKS=1;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
